@@ -1,0 +1,1828 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTPO_SYNPOAMT">
+    <function name="DTPO_SYNPOAMT" type="NULL">
+      <parameter name="pinstance_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[-- Parameter
+  TYPE RECORD IS REF CURSOR;
+
+v_Record_ID VARCHAR(32); 
+Cur_Parameter RECORD;
+CurSetInstance RECORD;
+v_status VARCHAR(6); 
+v_ResultStr VARCHAR(300) ;
+v_USER VARCHAR(32); 
+V_message VARCHAR(300) :='';
+v_Result NUMBER:=1;
+Cur_Validation RECORD;
+v_exist NUMBER:=0;
+v_existrow NUMBER:=0;
+v_sumLineNetTotal NUMBER:=0;
+v_orderLineID Character Varying(32);
+v_formattedItemCode Character Varying(20);
+v_formattedLength NUMBER:=0;
+v_OrderItemCode Character Varying(10);
+v_codeCount NUMBER:=0;
+v_FinalCodeLength NUMBER:=0;
+v_5DigitCodeRow NUMBER:=0;
+v_5DigitCodeBudget NUMBER:=0;
+v_3DigitCodeRow NUMBER:=0;
+v_3DigitCodeBudget NUMBER:=0;
+v_3DigitCode Character Varying(10);
+v_2DigitCode Character Varying(10);
+v_2DigitCodeRow NUMBER:=0;
+v_2DigitCodeBudget NUMBER:=0;
+v_2DigitCodeOrderAmt NUMBER:=0;
+v_3DigitCodeOrderAmt NUMBER:=0;
+v_5DigitCodeOrderAmt NUMBER:=0;
+v_7DigitCodeOrderAmt NUMBER:=0;
+v_7DigitCode Character Varying(10);
+v_7DigitCodeRow NUMBER:=0;
+v_7DigitCodeBudget NUMBER:=0;
+v_5DigitCode Character Varying(10);
+v_9DigitCodeRow NUMBER:=0;
+v_9DigitCodeBudget Character Varying(10);
+v_9DigitCodeOrderAmt NUMBER:=0;
+v_2digitcodetotalamt NUMBER:=0;
+v_temp1DigitCode Character Varying(10);
+
+       BEGIN
+    v_ResultStr:='PInstanceNotFound';
+    AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'Y', NULL, NULL) ;
+ BEGIN --BODY
+    -- Get Parameters
+    v_ResultStr:='ReadingParameters';
+    FOR Cur_Parameter IN
+      (SELECT i.Record_ID,
+        p.ParameterName,
+        p.P_String,
+        p.P_Number,
+        p.P_Date,
+        i.createdBy
+      FROM AD_PInstance i
+      LEFT JOIN AD_PInstance_Para p
+        ON i.AD_PInstance_ID=p.AD_PInstance_ID
+      WHERE i.AD_PInstance_ID=PInstance_ID
+      ORDER BY p.SeqNo
+      )
+    LOOP
+     
+            v_Record_ID := Cur_Parameter.Record_ID;
+        --  raise exception '%','order id '||v_Record_ID;
+    end loop;
+    
+BEGIN --Exsistance check start
+   update c_order set em_dtpo_synpoamt='Y' where c_order_id = v_Record_ID;
+   AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 1, NULL);
+   
+   For Cur_Validation IN(select distinct c_bpartner.name as bpartnername,c_order.documentno,m_product.value as itemcode,c_project.c_project_id as projectID from c_order 
+left join c_orderline on c_orderline.c_order_id=c_order.c_order_id left join m_product on m_product.m_product_id=c_orderline.m_product_id left join c_project on c_project.c_project_id=c_order.c_project_id
+left join c_bpartner on c_bpartner.c_bpartner_id=c_order.c_bpartner_id left join dtzk_ssinformation on dtzk_ssinformation.dtzk_ssinformation_id=c_project.c_project_id
+where c_order.c_order_id=v_Record_ID and columnid=0 group by c_bpartner.name ,c_order.documentno,m_product.value,c_project.c_project_id)LOOP
+
+select coalesce(trunc(sum(c_orderline.linenetamt),2),0) into v_sumLineNetTotal from  c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id left join 
+m_product on m_product.m_product_id=c_orderline.m_product_id where c_order.c_order_id=v_Record_ID and m_product.value=Cur_Validation.itemcode and c_order.em_dtpo_inactive='N';
+
+select c_orderline_id into v_orderLineID from c_order join c_orderline on c_orderline.c_order_id=v_Record_ID
+join m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value= Cur_Validation.itemcode and c_order.em_dtpo_inactive='N';
+
+select trim( both '.0' from Cur_Validation.itemcode::text) into v_formattedItemCode;
+select character_length(v_formattedItemCode::text) into v_formattedLength;
+IF(v_formattedLength::numeric = 2 or v_formattedLength::numeric = 4 or v_formattedLength::numeric = 6 or v_formattedLength::numeric = 8) THEN
+        v_OrderItemCode:=v_formattedItemCode||0;
+ELSE
+v_OrderItemCode:=v_formattedItemCode;
+END IF;  
+
+select count(*) into v_codeCount from dtzk_ssinformation where dtzk_ssinformation.dtzk_ssinformation_id=Cur_Validation.projectID 
+and (data like v_OrderItemCode::text or data like v_OrderItemCode::text||'.'||0);
+
+        IF(v_codeCount = 0) THEN
+      update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID; 
+             AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Item Code Not Found In Project Budget Sheet Please insert the item code! '||v_OrderItemCode::text) ;
+             
+        ELSE
+             select character_length(v_OrderItemCode::text) into v_FinalCodeLength;
+
+
+IF(v_FinalCodeLength::numeric = 9) THEN
+
+select rowid into v_9DigitCodeRow from dtzk_ssinformation where (data like v_OrderItemCode::text or data like v_OrderItemCode::text||'.'||0) and dtzk_ssinformation_id=Cur_Validation.projectID;
+select data::numeric into v_9DigitCodeBudget from dtzk_ssinformation where rowid=v_9DigitCodeRow and columnid='3' and dtzk_ssinformation_id=Cur_Validation.projectID; 
+--raise exception '%','v_9DigitCodeBudget '||v_9DigitCodeBudget||'code '||v_OrderItemCode; 
+IF ( v_9DigitCodeBudget::numeric < 1) THEN
+
+  select substring(v_OrderItemCode::text from 1 for 7) into v_7DigitCode;
+--  raise exception '%','v_9DigitCodeBudget '||v_9DigitCodeBudget||'code '||v_7DigitCode;
+                select rowid into  v_7DigitCodeRow from dtzk_ssinformation where (data like v_7DigitCode::text or data like v_7DigitCode::text||'.'||0) 
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+
+select data::numeric  into v_7DigitCodeBudget from  dtzk_ssinformation where rowid = v_7DigitCodeRow and columnid='3' and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+ IF(v_7DigitCodeBudget::numeric < 1) THEN
+
+                 select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+ select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_5DigitCode::text||'.'||0)
+ and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+ select data::numeric  into  v_5DigitCodeBudget from  dtzk_ssinformation where rowid = v_5DigitCodeRow and columnid='3' and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+         IF(v_5DigitCodeBudget::numeric < 1) THEN
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0) 
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+
+select data::numeric  into v_3DigitCodeBudget from  dtzk_ssinformation where rowid = v_3DigitCodeRow and columnid='3' 
+and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+IF(v_3DigitCodeBudget::numeric < 1) THEN
+--RAISE NO_DATA_FOUND||v_3DigitCodeBudget;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0) and
+dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+--RAISE NO_DATA_FOUND||v_2DigitCodeRow;
+
+--RAISE NO_DATA_FOUND||v_2DigitCodeRow;
+select data::numeric  into v_2DigitCodeBudget from  dtzk_ssinformation where rowid = v_2DigitCodeRow and columnid='3' 
+and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+        select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt::numeric from c_order  left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+--RAISE NO_DATA_FOUND||v_2DigitCodeOrderAmt;
+
+IF(v_2DigitCodeOrderAmt::numeric > v_2DigitCodeBudget) THEN
+ update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID; 
+AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);  
+ELSE
+                    select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID
+                    and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1; 
+
+                    IF(v_exist=0) THEN
+
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric  where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0) into v_3DigitCodeOrderAmt from c_order left join c_orderline 
+on c_orderline.c_order_id=c_order.c_order_id left join c_project on c_project.c_project_id=c_order.c_project_id left join
+m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value like v_3DigitCode::text||'%' 
+AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric  where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+                -- and length(m_product.value)=3;
+             --   RAISE NO_DATA_FOUND||v_5DigitCodeOrderAmt;
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric  where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+                    
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_9DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_9DigitCodeOrderAmt::numeric  where rowid = v_9DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0) into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_7DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric  where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+                        update dtzk_ssinformation set rowid=rowid+1 where rowid>v_9DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;
+            INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '0','0');
+
+    INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);
+ update c_orderline set em_dtpo_identifymaster=v_2DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE 
+--RAISE NO_DATA_FOUND||v_2DigitCodeRow;
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric  where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;       
+--raise exception '%','v_2DigitCodeOrderAmt::numeric + v_sumLineNetTotal::numeric'||v_2DigitCodeOrderAmt::numeric + v_sumLineNetTotal::numeric;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0) into v_3DigitCodeOrderAmt from c_order left join c_orderline 
+on c_orderline.c_order_id=c_order.c_order_id left join c_project on c_project.c_project_id=c_order.c_project_id left join
+m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value like v_3DigitCode::text||'%' 
+AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric  where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+                update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric   where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_9DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N'  and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_9DigitCodeOrderAmt::numeric   where rowid = v_9DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_7DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric   where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+END IF;     
+
+   END IF;
+
+ELSE
+
+select coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id left 
+join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+m_product.value like v_3DigitCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+IF(v_3DigitCodeOrderAmt > v_3DigitCodeBudget) THEN
+ update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID;
+AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);  
+ELSE
+select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID 
+and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1; 
+                    
+IF(v_exist = 0)THEN
+
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric  where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_9DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_9DigitCodeOrderAmt::numeric  where rowid = v_9DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_7DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric  where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+                select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric    where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+                   update dtzk_ssinformation set rowid=rowid+1 where rowid>v_9DigitCodeRow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);
+update c_orderline set em_dtpo_identifymaster=v_3DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric   where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_9DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_9DigitCodeOrderAmt::numeric  where rowid = v_9DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_7DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric  where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric   where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+                select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric   where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+        select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+   END IF;
+ END IF;
+END IF;
+
+
+ELSE 
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id left join
+        c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value 
+        like v_5DigitCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+                
+IF(v_5DigitCodeOrderAmt > v_5DigitCodeBudget) THEN   
+ update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID;      
+   AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);      
+
+ELSE
+select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID and 
+(data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1;
+--raise exception '%','count'||v_exist; 
+IF(v_exist=0) THEN
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+        select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_9DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_9DigitCodeOrderAmt::numeric where rowid = v_9DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_7DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric  where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N'  and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric   where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+                select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric  where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+update dtzk_ssinformation set rowid=rowid+1 where rowid>v_9DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;   
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);
+
+update c_orderline set em_dtpo_identifymaster=v_5DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+
+ELSE
+
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric +v_sumLineNetTotal  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+        select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_9DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_9DigitCodeOrderAmt::numeric  where rowid = v_9DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_7DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+                update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric  where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+                select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric  where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+        select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+   END IF;        
+END IF; 
+  
+
+END IF;
+
+
+
+ ELSE --7 else
+select coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_7DigitCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+                
+         IF(v_7DigitCodeOrderAmt > v_7DigitCodeBudget) THEN
+  update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID; 
+  AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);
+ ELSE
+select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID
+                and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1;
+                                                 
+IF(v_exist=0) THEN 
+update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_9DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N'  and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+                update dtzk_ssinformation set data=v_9DigitCodeOrderAmt::numeric where rowid = v_9DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_5DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric  where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric  where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+
+--select  substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric  where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+update dtzk_ssinformation set rowid=rowid+1 where rowid>v_9DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;  
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);          
+
+update c_orderline set em_dtpo_identifymaster=v_7DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE
+update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric  where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_9DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+                update dtzk_ssinformation set data=v_9DigitCodeOrderAmt::numeric  where rowid = v_9DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_5DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric  where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric  where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+--select  substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric  where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) 
+and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+END IF;        
+END IF;
+
+END IF;
+
+
+
+
+
+
+ ELSE
+     select coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_9DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_OrderItemCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+                
+         IF(v_9DigitCodeOrderAmt  > v_9DigitCodeBudget) THEN
+                update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID; 
+                AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);
+ ELSE
+select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID
+                and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1;
+                                                 
+IF(v_exist=0) THEN 
+update dtzk_ssinformation set data=v_9DigitCodeOrderAmt::numeric  where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+                select substring(v_OrderItemCode::text from 1 for 7) into v_7DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_7DigitCodeRow from dtzk_ssinformation where (data like v_7DigitCode::text or data like v_7DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric  where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+
+select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_5DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric  where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric  where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+ select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+
+--select  substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric  where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+update dtzk_ssinformation set rowid=rowid+1 where rowid>v_9DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;  
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_9DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);          
+
+update c_orderline set em_dtpo_identifymaster=v_9DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE
+update dtzk_ssinformation set data=v_9DigitCodeOrderAmt::numeric where rowid = v_9DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+                select substring(v_OrderItemCode::text from 1 for 7) into v_7DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_7DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_7DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_7DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+
+select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_5DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+--select  substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) 
+and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+END IF;        
+ END IF;
+
+ END IF;
+END IF;
+
+IF(v_FinalCodeLength::numeric = 7) THEN
+
+select rowid into v_7DigitCodeRow from dtzk_ssinformation where (data like v_OrderItemCode::text or data like v_OrderItemCode::text||'.'||0) and dtzk_ssinformation_id=Cur_Validation.projectID;
+select data into v_7DigitCodeBudget from dtzk_ssinformation where rowid=v_7DigitCodeRow and columnid='3' and dtzk_ssinformation_id=Cur_Validation.projectID; 
+IF ( v_7DigitCodeBudget::numeric < 1) THEN
+select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+                select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_5DigitCode::text||'.'||0) 
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+
+select data  into v_5DigitCodeBudget from  dtzk_ssinformation where rowid = v_5DigitCodeRow and columnid='3' and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+ IF(v_5DigitCodeBudget::numeric < 1) THEN
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+                        select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0)
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+select data  into v_3DigitCodeBudget from  dtzk_ssinformation where rowid = v_3DigitCodeRow and columnid='3' and dtzk_ssinformation_id=Cur_Validation.projectID; 
+IF(v_3DigitCodeBudget::numeric < 1) THEN
+--select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0) and
+dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+select data  into v_2DigitCodeBudget from  dtzk_ssinformation where rowid = v_2DigitCodeRow and columnid='3' 
+and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+        select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order  left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+IF(v_2DigitCodeOrderAmt > v_2DigitCodeBudget) THEN
+ update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID; 
+AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);  
+ELSE
+                    select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID
+                    and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1; 
+
+                    IF(v_exist=0) THEN
+
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline 
+on c_orderline.c_order_id=c_order.c_order_id left join c_project on c_project.c_project_id=c_order.c_project_id left join
+m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value like v_3DigitCode::text||'%' 
+AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+                        update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+     select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                       left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                      where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+       update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+
+                        update dtzk_ssinformation set rowid=rowid+1 where rowid>v_7DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;
+            INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '0','0');
+
+    INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);
+ update c_orderline set em_dtpo_identifymaster=v_2DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE 
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;       
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline 
+on c_orderline.c_order_id=c_order.c_order_id left join c_project on c_project.c_project_id=c_order.c_project_id left join
+m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value like v_3DigitCode::text||'%' 
+AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+                update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                       left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                      where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+       update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+END IF;     
+
+   END IF;
+
+ELSE
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_3DigitCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+IF(v_3DigitCodeOrderAmt > v_3DigitCodeBudget) THEN
+ update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID; 
+AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);  
+ELSE
+
+select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= cur_validation.projectID
+and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1;
+IF(v_exist=0) THEN
+                       update dtzk_ssinformation set rowid=rowid+1 where rowid>v_3DigitCodeRow::numeric and dtzk_ssinformation_id=cur_validation.projectID;
+
+                       select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                       left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                      where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+       update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+                       
+                       select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+       select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+               left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+               m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+       select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_5DigitCode::text||'.'||0);
+       update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+        --select  substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+        select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+        v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+        select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+        select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+        update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+update dtzk_ssinformation set rowid=rowid+1 where rowid>v_7DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '5',cur_validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '6',cur_validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (cur_validation.projectID, v_7DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||cur_validation.documentno)::text);
+update c_orderline set em_dtpo_identifymaster=v_3DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE
+
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+ select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+       select coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+               left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+               m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+       select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_5DigitCode::text||'.'||0);
+       update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+       -- select  substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+        select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+        select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+        select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+        update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+        select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) 
+and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+                              
+
+END IF;
+END IF;--added
+
+END IF;
+
+ELSE
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_5DigitCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+                
+IF(v_5DigitCodeOrderAmt > v_5DigitCodeBudget) THEN
+ update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID; 
+ AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);      
+
+ELSE
+select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID
+                        and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1; 
+IF(v_exist=0) THEN 
+
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+--select  substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+update dtzk_ssinformation set rowid=rowid+1 where rowid>v_7DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;   
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);
+update c_orderline set em_dtpo_identifymaster=v_5DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N'  and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+--select  substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) 
+and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+END IF;        
+END IF; 
+
+END IF;
+
+ELSE --7 digit else
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_7DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_OrderItemCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+                
+         IF(v_7DigitCodeOrderAmt > v_7DigitCodeBudget) THEN
+ update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID; 
+  AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);
+ ELSE
+select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID
+                and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1;
+                                                 
+IF(v_exist=0) THEN 
+update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_5DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+--select  substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+update dtzk_ssinformation set rowid=rowid+1 where rowid>v_7DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;  
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_7DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);          
+
+update c_orderline set em_dtpo_identifymaster=v_7DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE
+update dtzk_ssinformation set data=v_7DigitCodeOrderAmt::numeric where rowid = v_7DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+               where m_product.value like v_5DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_5DigitCode::text or data like v_5DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+--select  substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) 
+and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+END IF;        
+END IF;
+
+END IF;
+END IF;
+IF(v_FinalCodeLength::numeric = 5) THEN
+--raise exception '%','v_FinalCodeLength'||v_FinalCodeLength;
+--raise exception '%','v_2DigitCodeOrderAmt'||v_2DigitCodeOrderAmt||'v_2DigitCodeBudget'||v_2DigitCodeBudget;
+select rowid into  v_5DigitCodeRow from dtzk_ssinformation where (data like v_OrderItemCode::text or data like v_OrderItemCode::text||'.'||0)
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+
+select data  into  v_5DigitCodeBudget from  dtzk_ssinformation where rowid = v_5DigitCodeRow and columnid='3' 
+and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+IF(v_5DigitCodeBudget::numeric < 1) THEN
+    select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+        select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0) 
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+
+select data  into v_3DigitCodeBudget from  dtzk_ssinformation where rowid = v_3DigitCodeRow and columnid='3' 
+and dtzk_ssinformation_id=Cur_Validation.projectID; 
+--raise exception '%','v_3DigitCode'||v_3DigitCode||'v_3DigitCodeBudget'||v_3DigitCodeBudget;
+IF(v_3DigitCodeBudget::numeric < 1) THEN
+
+--select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0) and
+dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+select data  into v_2DigitCodeBudget from  dtzk_ssinformation where rowid = v_2DigitCodeRow and columnid='3' 
+and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+        select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order  left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+        left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+        m_product.value like v_2DigitCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+IF(v_2DigitCodeOrderAmt > v_2DigitCodeBudget) THEN
+update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID;
+AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);  
+ELSE
+                    select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID
+                    and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1; 
+
+                    IF(v_exist=0) THEN
+
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline 
+on c_orderline.c_order_id=c_order.c_order_id left join c_project on c_project.c_project_id=c_order.c_project_id left join
+m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value like v_3DigitCode::text||'%' 
+AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive ='N' and em_dtpo_synpoamt = 'Y';
+
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+              
+
+                update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+                    
+                        update dtzk_ssinformation set rowid=rowid+1 where rowid>v_5DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;
+            INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '0','0');
+
+    INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);
+ update c_orderline set em_dtpo_identifymaster=v_2DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE 
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;       
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline 
+on c_orderline.c_order_id=c_order.c_order_id left join c_project on c_project.c_project_id=c_order.c_project_id left join
+m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value like v_3DigitCode::text||'%' 
+AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_OrderItemCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+                update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+END IF;     
+
+   END IF;
+
+ELSE
+select coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id left 
+join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+m_product.value like v_3DigitCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+--raise exception '%','v_3DigitCodeOrderAmt'||v_3DigitCodeOrderAmt||'v_3DigitCodeBudget'||v_3DigitCodeBudget;
+IF(v_3DigitCodeOrderAmt > v_3DigitCodeBudget) THEN
+update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID;
+AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);  
+ELSE
+select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID 
+and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1; 
+                    
+IF(v_exist = 0)THEN
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id left join
+        c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value 
+        like v_OrderItemCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+        
+        
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+--select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+                select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+                update dtzk_ssinformation set rowid=rowid+1 where rowid>v_5DigitCodeRow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);
+update c_orderline set em_dtpo_identifymaster=v_3DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id left join
+        c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value 
+        like v_OrderItemCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+--select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+                select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+        select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+   END IF;
+ END IF;
+END IF; 
+ELSE 
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_5DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id left join
+        c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where m_product.value 
+        like v_OrderItemCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+                
+IF(v_5DigitCodeOrderAmt > v_5DigitCodeBudget) THEN 
+update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID;        
+   AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);      
+
+ELSE
+select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID and 
+(data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1; 
+IF(v_exist=0) THEN
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+--select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+                select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+update dtzk_ssinformation set rowid=rowid+1 where rowid>v_5DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;   
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_5DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);
+update c_orderline set em_dtpo_identifymaster=v_5DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+
+ELSE
+
+update dtzk_ssinformation set data=v_5DigitCodeOrderAmt::numeric where rowid = v_5DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id 
+                where m_product.value like v_3DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_3DigitCode::text or data like v_3DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+--select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+                select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id 
+                left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id where 
+                m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+                select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0);
+
+                update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+        select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+   END IF;        
+END IF; 
+  
+
+END IF;
+
+
+END IF;
+
+IF(v_FinalCodeLength::numeric = 3) THEN
+  
+select rowid into  v_3DigitCodeRow from dtzk_ssinformation where (data like v_OrderItemCode::text or data like v_OrderItemCode::text||'.'||0)
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+
+select data  into v_3DigitCodeBudget from  dtzk_ssinformation where rowid = v_3DigitCodeRow and columnid='3' and dtzk_ssinformation_id=Cur_Validation.projectID; 
+IF(v_3DigitCodeBudget::numeric < 1) THEN
+--select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+                                select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0) 
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0; 
+select data  into v_2DigitCodeBudget from  dtzk_ssinformation where rowid = v_2DigitCodeRow and columnid='3' 
+and dtzk_ssinformation_id=Cur_Validation.projectID; 
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_2DigitCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+--raise exception '%','v_2DigitCode :'||v_2DigitCode||'v_2DigitCodeOrderAmt :'||v_2DigitCodeOrderAmt;
+IF(v_2DigitCodeOrderAmt > v_2DigitCodeBudget) THEN
+update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID;
+ AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);  
+ELSE
+                          select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID
+                                  and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1; 
+
+                                IF(v_exist=0) THEN
+
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_OrderItemCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set rowid=rowid+1 where rowid>v_3DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '3','0');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '4','0');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '8','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);
+
+update c_orderline set em_dtpo_identifymaster=v_2DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE 
+
+update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+   
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_OrderItemCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;   
+
+select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) 
+and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+END IF;     
+
+END IF;  
+ELSE 
+
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_3DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_OrderItemCode::text||'%' AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';
+
+  IF(v_3DigitCodeOrderAmt > v_3DigitCodeBudget) THEN
+update c_order set em_dtpo_synpoamt='N' where c_order_id = v_Record_ID;
+AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 0, 'Order Amount Greater than Cost Code Budget Please modify the Budget ! '||v_OrderItemCode::text);  
+  ELSE
+select count(*) into v_exist from  dtzk_ssinformation where  dtzk_ssinformation_id= Cur_Validation.projectID
+and (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) limit 1;
+                                                 
+        IF(v_exist=0) THEN
+--select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0)
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0;  
+
+        update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+   
+update dtzk_ssinformation set rowid=rowid+1 where rowid>v_3DigitCodeRow::numeric  and dtzk_ssinformation_id=Cur_Validation.projectID;
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '0','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '1','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '2','0');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '3','0.00');
+
+/*INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '4','0.00');*/
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '5',Cur_Validation.documentno::text);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '6',Cur_Validation.bpartnername::text);
+
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '7', v_sumLineNetTotal::numeric);
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '8','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '9','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '10','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '11','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '12','0.00');
+
+INSERT INTO dtzk_ssinformation(dtzk_ssinformation_id, rowid, columnid, data)
+VALUES (Cur_Validation.projectID, v_3DigitCodeRow::numeric+1, '14',(v_OrderItemCode::text||'/'||Cur_Validation.documentno)::text);
+
+
+update c_orderline set em_dtpo_identifymaster=v_3DigitCode where c_orderline.c_orderline_id=v_orderlineID;
+ELSE 
+
+--select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select substring(v_OrderItemCode::text from 1 for 1) into v_temp1DigitCode;
+v_2DigitCode:=(v_temp1DigitCode||'0')::text;
+select  coalesce(trunc(sum(c_orderline.linenetamt),2),0)  into v_2DigitCodeOrderAmt from c_order left join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+left join c_project on c_project.c_project_id=c_order.c_project_id left join m_product on m_product.m_product_id=c_orderline.m_product_id
+where m_product.value like v_2DigitCode::text||'%'  AND c_project.c_project_id=Cur_Validation.projectID and c_order.em_dtpo_inactive='N' and em_dtpo_synpoamt = 'Y';-- and length(m_product.value)=3;
+
+select rowid into  v_2DigitCodeRow from dtzk_ssinformation where (data like v_2DigitCode::text or data like v_2DigitCode::text||'.'||0)
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=0;  
+
+        update dtzk_ssinformation set data=v_2DigitCodeOrderAmt::numeric where rowid = v_2DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID; 
+
+update dtzk_ssinformation set data=v_3DigitCodeOrderAmt::numeric where rowid = v_3DigitCodeRow::numeric  and columnid = 7 and dtzk_ssinformation_id=Cur_Validation.projectID;
+   
+select rowid into v_existrow from dtzk_ssinformation where (data like v_OrderItemCode::text||'/'||Cur_Validation.documentno and columnid=14) 
+and dtzk_ssinformation_id=Cur_Validation.projectID;
+update dtzk_ssinformation set data=v_sumLineNetTotal::text where rowid=v_existrow::numeric 
+and dtzk_ssinformation_id=Cur_Validation.projectID and columnid=7;
+END IF;     
+
+   END IF; 
+
+
+       END IF;
+
+END IF;
+END IF;   
+END LOOP;--Exsistance check end
+
+  --RETURN;
+
+  --update c_order set em_dtpo_synpoamt='Y' where c_order_id = v_Record_ID;
+  END; --BODY
+EXCEPTION
+WHEN OTHERS THEN
+   v_ResultStr:= '@ERROR=' || SQLERRM;
+
+
+  
+  AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', v_Result, v_ResultStr);
+ END;
+  --RETURN;
+END DTPO_SYNPOAMT
+]]></body>
+    </function>
+  </database>

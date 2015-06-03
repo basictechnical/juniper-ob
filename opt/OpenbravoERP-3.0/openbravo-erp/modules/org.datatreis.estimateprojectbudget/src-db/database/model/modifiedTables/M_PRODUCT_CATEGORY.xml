@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+  <database name="MODIFIED TABLE M_PRODUCT_CATEGORY">
+    <table name="M_PRODUCT_CATEGORY" primaryKey="M_PRODUCT_CATEGORY_KEY">
+      <column name="EM_EPB_SUBTASKS_ID" primaryKey="false" required="false" type="VARCHAR" size="32" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_EPB_ITEMRAMGE_CODE" primaryKey="false" required="false" type="VARCHAR" size="30" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+    </table>
+  </database>

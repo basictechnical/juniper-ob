@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+  <database name="TRIGGER EPB_UPDATETOTALBUDGETAMT_TRG">
+    <trigger name="EPB_UPDATETOTALBUDGETAMT_TRG" table="EPB_FIRSTLEVELBUDGET" fires="after" insert="true" update="true" delete="false" foreach="row">
+      <body><![CDATA[
+ v_project VARCHAR(32);
+ v_record_id VARCHAR(32); 
+ v_budgetamt NUMBER(14,2);    
+
+BEGIN
+    
+    IF AD_isTriggerEnabled()='N' THEN RETURN;
+    END IF;
+
+IF(TG_OP='INSERT' OR TG_OP='UPDATE') THEN
+
+v_record_id:=:new.epb_firstlevelbudget_id;
+
+
+select sum(budget_amt) INTO v_budgetamt from epb_firstlevelbudget 
+where c_project_id=:new.c_project_id;
+
+UPDATE dtzk_ssinformation set data = v_budgetamt::numeric where rowid='6' and columnid='1' and dtzk_ssinformation_id=:new.c_project_id;
+ 
+END IF; 
+
+END EPB_UPDATETOTALBUDGETAMT_TRG
+]]></body>
+    </trigger>
+  </database>

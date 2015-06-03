@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+  <database name="MODIFIED TABLE DTPO_POCOPFILE">
+    <table name="DTPO_POCOPFILE" primaryKey="DTPO_POCOPFILE_KEY">
+      <column name="EM_JCM_DOLS_INVOICE" primaryKey="false" required="false" type="TIMESTAMP" size="7" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_JCM_DORB_INVOICE" primaryKey="false" required="false" type="TIMESTAMP" size="7" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_JCM_CLAIMED_INVOICEAMT" primaryKey="false" required="false" type="DECIMAL" size="10,4" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_JCM_NETTOTAL" primaryKey="false" required="false" type="DECIMAL" size="12,2" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_JCM_RECOVERYTOTAL" primaryKey="false" required="false" type="DECIMAL" size="12,2" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_JCM_ADVANCETOTAL" primaryKey="false" required="false" type="DECIMAL" size="12,2" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+    </table>
+  </database>

@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+  <database name="TRIGGER DTPO_PAYMENTVALIDATION_TRG">
+    <trigger name="DTPO_PAYMENTVALIDATION_TRG" table="DTPO_COPPAYMENTS" fires="before" insert="true" update="true" delete="false" foreach="row">
+      <body><![CDATA[
+  
+  
+   v_payamount NUMBER;   
+   v_copamount NUMBER;
+   v_pocopfileID character varying(32);
+   v_currentpayamount NUMBER;
+BEGIN
+    
+    IF AD_isTriggerEnabled()='N' THEN RETURN;
+    END IF;
+    IF( INSERTING OR UPDATING) THEN
+                --raise exception '%','dtpo_pocopfile_id '||new.dtpo_pocopfile_id;
+
+                 v_pocopfileID:=:new.dtpo_pocopfile_id ;
+                 v_currentpayamount:=:new.payamount; 
+                 -- raise exception '%','dtpo_pocopfile_id '||v_pocopfileID||'v_currentpayamount'||v_currentpayamount;
+ select coalesce(sum(dtpo_coppayments.payamount),0),round(dtpo_pocopfile.copamount) into v_payamount,v_copamount from dtpo_pocopfile 
+ left join dtpo_coppayments on dtpo_coppayments.dtpo_pocopfile_id = v_pocopfileID 
+ where dtpo_pocopfile.dtpo_pocopfile_id=v_pocopfileID group by copamount;
+ --where dtpo_coppayments_id=new.dtpo_pocopfile_id group by copamount;
+ --raise exception '%','v_payamount '||v_payamount||'v_copamount'||v_copamount;
+ if(v_currentpayamount + v_payamount > v_copamount) Then
+ raise exception '%','Cummulative Payemnt Amount Greater Than Certification Amount';
+ end if;
+    END IF;
+
+
+
+
+
+END DTPO_PAYMENTVALIDATION_TRG
+]]></body>
+    </trigger>
+  </database>

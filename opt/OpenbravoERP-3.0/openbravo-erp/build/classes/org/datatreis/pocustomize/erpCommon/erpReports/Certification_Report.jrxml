@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Certification_Report" pageWidth="1068" pageHeight="631" orientation="Landscape" columnWidth="1028" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="C_order_ID" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[select c_order.documentno,copno,searchkey,attributename,qtyordered,em_dtpo_insurance::numeric,em_dtpo_frieght::numeric,em_dtpo_pkg::numeric,em_dtpo_others::numeric,em_dtpo_supplybasic,(round(coppercentage)||'%') as coppercentage,em_dtpo_importbasic,
+productqty,(em_dtpo_insurance::numeric+em_dtpo_frieght::numeric+em_dtpo_pkg::numeric+em_dtpo_others::numeric+em_dtpo_importbasic)as ImportedRate,
+((em_dtpo_insurance::numeric+em_dtpo_frieght::numeric+em_dtpo_pkg::numeric+em_dtpo_others::numeric+em_dtpo_importbasic)*qtyordered) as totalamount,copbasic,copinsurance,copfreight,coppkg_fwdg,copothers,(copbasic+copinsurance+copfreight+coppkg_fwdg+copothers) as Certified_COPTotal from dtpo_itemcop
+  join c_orderline on c_orderline.c_orderline_id=dtpo_itemcop.c_orderline_id
+  left join dtpo_pocopfile on dtpo_pocopfile.dtpo_pocopfile_id=dtpo_itemcop.dtpo_pocopfile_id
+  left join c_order on c_orderline.c_order_id=c_order.c_order_id
+where c_order.c_order_id=$P{C_order_ID}
+group by c_order.documentno,copno,searchkey,attributename,qtyordered,em_dtpo_insurance,em_dtpo_frieght,em_dtpo_pkg,em_dtpo_others,priceactual,coppercentage,
+productqty,em_dtpo_supplybasic,em_dtpo_importbasic,copbasic,copinsurance,copfreight,coppkg_fwdg,copothers
+ order by attributename,searchkey]]>
+	</queryString>
+	<field name="documentno" class="java.lang.String"/>
+	<field name="copno" class="java.lang.String"/>
+	<field name="searchkey" class="java.lang.String"/>
+	<field name="attributename" class="java.lang.String"/>
+	<field name="qtyordered" class="java.math.BigDecimal"/>
+	<field name="em_dtpo_insurance" class="java.math.BigDecimal"/>
+	<field name="em_dtpo_frieght" class="java.math.BigDecimal"/>
+	<field name="em_dtpo_pkg" class="java.math.BigDecimal"/>
+	<field name="em_dtpo_others" class="java.math.BigDecimal"/>
+	<field name="em_dtpo_supplybasic" class="java.math.BigDecimal"/>
+	<field name="coppercentage" class="java.lang.String"/>
+	<field name="em_dtpo_importbasic" class="java.math.BigDecimal"/>
+	<field name="productqty" class="java.math.BigDecimal"/>
+	<field name="importedrate" class="java.math.BigDecimal"/>
+	<field name="totalamount" class="java.math.BigDecimal"/>
+	<field name="copbasic" class="java.math.BigDecimal"/>
+	<field name="copinsurance" class="java.math.BigDecimal"/>
+	<field name="copfreight" class="java.math.BigDecimal"/>
+	<field name="coppkg_fwdg" class="java.math.BigDecimal"/>
+	<field name="copothers" class="java.math.BigDecimal"/>
+	<field name="certified_coptotal" class="java.math.BigDecimal"/>
+	<variable name="Total_COP" class="java.math.BigDecimal" resetType="Group" resetGroup="Attribute_Name" calculation="Sum">
+		<variableExpression><![CDATA[$F{productqty}]]></variableExpression>
+		<initialValueExpression><![CDATA[]]></initialValueExpression>
+	</variable>
+	<variable name="COP_Basic" class="java.math.BigDecimal" resetType="Group" resetGroup="Attribute_Name" calculation="Sum">
+		<variableExpression><![CDATA[$F{copbasic}]]></variableExpression>
+	</variable>
+	<variable name="COP_Insurance" class="java.math.BigDecimal" resetType="Group" resetGroup="Attribute_Name" calculation="Sum">
+		<variableExpression><![CDATA[$F{copinsurance}]]></variableExpression>
+	</variable>
+	<variable name="COP_Package" class="java.math.BigDecimal" resetType="Group" resetGroup="Attribute_Name" calculation="Sum">
+		<variableExpression><![CDATA[$F{coppkg_fwdg}]]></variableExpression>
+	</variable>
+	<variable name="COP_Others" class="java.math.BigDecimal" resetType="Group" resetGroup="Attribute_Name" calculation="Sum">
+		<variableExpression><![CDATA[$F{copothers}]]></variableExpression>
+	</variable>
+	<variable name="Cummulative_COP" class="java.math.BigDecimal" resetType="Group" resetGroup="Attribute_Name" calculation="Sum">
+		<variableExpression><![CDATA[$F{certified_coptotal}]]></variableExpression>
+	</variable>
+	<variable name="COP_Freight" class="java.math.BigDecimal" resetType="Group" resetGroup="Attribute_Name" calculation="Sum">
+		<variableExpression><![CDATA[$F{copfreight}]]></variableExpression>
+	</variable>
+	<group name="Attribute_Name">
+		<groupExpression><![CDATA[$F{attributename}]]></groupExpression>
+		<groupHeader>
+			<band height="47">
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement x="1" y="0" width="73" height="25"/>
+					<textElement verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{searchkey}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement x="74" y="0" width="147" height="25"/>
+					<textElement verticalAlignment="Middle"/>
+					<textFieldExpression class="java.lang.String"><![CDATA[$F{attributename}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement x="590" y="0" width="59" height="25"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{em_dtpo_insurance}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement x="529" y="0" width="61" height="25"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{em_dtpo_importbasic}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement x="649" y="0" width="66" height="25"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{em_dtpo_frieght}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement x="715" y="0" width="65" height="25"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{em_dtpo_pkg}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement x="780" y="0" width="61" height="25"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{em_dtpo_others}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement x="472" y="0" width="57" height="25"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{qtyordered}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement x="841" y="0" width="72" height="25"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{importedrate}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+					<reportElement x="913" y="0" width="84" height="25"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{totalamount}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" evaluationTime="Group" evaluationGroup="Attribute_Name" isBlankWhenNull="true">
+					<reportElement x="399" y="25" width="73" height="22"/>
+					<textElement/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Total_COP}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" evaluationTime="Group" evaluationGroup="Attribute_Name" isBlankWhenNull="true">
+					<reportElement x="529" y="25" width="61" height="22"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{COP_Basic}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" evaluationTime="Group" evaluationGroup="Attribute_Name" isBlankWhenNull="true">
+					<reportElement x="590" y="25" width="59" height="22"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{COP_Insurance}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" evaluationTime="Group" evaluationGroup="Attribute_Name" isBlankWhenNull="true">
+					<reportElement x="715" y="25" width="65" height="22"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{COP_Package}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" evaluationTime="Group" evaluationGroup="Attribute_Name" isBlankWhenNull="true">
+					<reportElement x="780" y="25" width="61" height="22"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{COP_Others}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" evaluationTime="Group" evaluationGroup="Attribute_Name" isBlankWhenNull="true">
+					<reportElement x="913" y="25" width="84" height="22"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Cummulative_COP}]]></textFieldExpression>
+				</textField>
+				<textField isStretchWithOverflow="true" evaluationTime="Group" evaluationGroup="Attribute_Name" isBlankWhenNull="true">
+					<reportElement x="649" y="25" width="66" height="22"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{COP_Freight}]]></textFieldExpression>
+				</textField>
+			</band>
+			<band/>
+		</groupHeader>
+	</group>
+	<group name="copno">
+		<groupExpression><![CDATA[$F{copno}]]></groupExpression>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="65" splitType="Stretch">
+			<staticText>
+				<reportElement x="1" y="30" width="73" height="35"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Item Code]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="74" y="30" width="147" height="35"/>
+				<textElement verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Description]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="74" y="10" width="455" height="20"/>
+				<textElement textAlignment="Center">
+					<font size="14" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Previous Certification Report]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="291" y="30" width="108" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[COP Certification]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="399" y="30" width="73" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[COPQuantity]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="221" y="30" width="70" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[COP NO]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="529" y="30" width="61" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Basic Rate]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="590" y="30" width="59" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Insurance]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="649" y="30" width="66" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Freight]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="715" y="30" width="65" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Package & Forwarding]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="780" y="30" width="61" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Others]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="472" y="30" width="57" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Order Qty]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="841" y="30" width="72" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Imported Rate]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="913" y="30" width="84" height="35"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[Total Amount]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="20" splitType="Stretch">
+			<textField isStretchWithOverflow="true" pattern="###0" isBlankWhenNull="true">
+				<reportElement x="291" y="0" width="108" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{coppercentage}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" pattern="###0" isBlankWhenNull="true">
+				<reportElement x="399" y="0" width="73" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{productqty}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="221" y="0" width="70" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{copno}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="529" y="0" width="61" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{copbasic}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="590" y="0" width="59" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{copinsurance}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="649" y="0" width="66" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{copfreight}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="715" y="0" width="65" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{coppkg_fwdg}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="780" y="0" width="61" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{copothers}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="913" y="0" width="84" height="20"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{certified_coptotal}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<columnFooter>
+		<band height="34" splitType="Stretch"/>
+	</columnFooter>
+	<pageFooter>
+		<band height="54" splitType="Stretch"/>
+	</pageFooter>
+	<summary>
+		<band height="42" splitType="Stretch"/>
+	</summary>
+</jasperReport>

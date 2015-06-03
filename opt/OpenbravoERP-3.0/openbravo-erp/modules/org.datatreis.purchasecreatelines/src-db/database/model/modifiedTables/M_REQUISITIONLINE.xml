@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+  <database name="MODIFIED TABLE M_REQUISITIONLINE">
+    <table name="M_REQUISITIONLINE" primaryKey="M_REQUISITIONLINE_KEY">
+      <column name="EM_PC_PENDINGQTY" primaryKey="false" required="false" type="DECIMAL" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_PC_CHECK" primaryKey="false" required="false" type="CHAR" size="1" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+    </table>
+  </database>

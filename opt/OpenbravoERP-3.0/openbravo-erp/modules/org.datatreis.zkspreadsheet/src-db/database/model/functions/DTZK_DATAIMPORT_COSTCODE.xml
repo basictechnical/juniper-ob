@@ -1,0 +1,409 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTZK_DATAIMPORT_COSTCODE">
+    <function name="DTZK_DATAIMPORT_COSTCODE" type="NUMERIC">
+      <parameter name="p_item_code" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_maincode" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_mainhead" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_subhead" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_costcode" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_itemhead" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_itemdes" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[/*************************************************************************
+* The contents of this file are subject to the Openbravo  Public  License
+* Version  1.1  (the  "License"),  being   the  Mozilla   Public  License
+* Version 1.1  with a permitted attribution clause; you may not  use this
+* file except in compliance with the License. You  may  obtain  a copy of
+* the License at http://www.openbravo.com/legal/license.html
+* Software distributed under the License  is  distributed  on  an "AS IS"
+* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+* License for the specific  language  governing  rights  and  limitations
+* under the License.
+* The Original Code is Openbravo ERP.
+* The Initial Developer of the Original Code is Openbravo SLU
+* All portions are Copyright (C) 2008-2009 Openbravo SLU
+* All Rights Reserved.
+* Contributor(s):  ______________________________________.
+************************************************************************/      
+  v_clientID varchar(32);
+  v_orgID varchar(32); 
+  cur_org_le RECORD;
+  v_mainsection NUMBER;
+  v_subsection NUMBER;
+  v_subtask NUMBER;
+  v_productcat NUMBER;
+  v_epb_mainsection_id varchar(32);
+  v_epb_subsection_id varchar(32);
+  v_epb_subtasks_id varchar(32);
+  v_product_category_id varchar(32);
+  v_productcount NUMBER;
+  v_user varchar(32);
+  v_product_id varchar(32);
+  v_product NUMBER;
+  v_unbudgetedcount NUMBER;
+  v_substrng varchar(10);
+  v_unbudgetedmain varchar(10);
+  v_itemcode character varying(20)='';
+  v_maincode character varying(10)='';
+  v_mainhead character varying(200)='';
+  v_subhead character varying(200)='';
+  v_costcode character varying(200)='';
+  v_itemhead character varying(200)='';
+  v_itemdesc character varying(200)='';
+
+BEGIN
+select ad_user_id into v_user from ad_user where name like 'Openbravo';
+select ad_org_id into v_orgID from ad_org where name like 'Chartered Hotels Private Limit';
+select ad_client_id into v_clientID from ad_client where name like upper('saraf')||'%';
+v_itemcode:=p_item_code; 
+v_maincode:=p_maincode;
+v_mainhead:=p_mainhead;
+v_subhead:=p_subhead;
+v_costcode:=p_costcode;
+v_itemhead:=p_itemhead;
+v_itemdesc:=p_itemdes;
+                raise notice '%','v_itemcode :'||v_itemcode;
+                raise notice '%','v_mainsection :'||v_mainsection;
+                raise notice '%','v_mainhead :'||v_mainhead;
+                raise notice '%','v_subhead :'||v_subhead;
+                raise notice '%','v_costcode :'||v_costcode;
+                raise notice '%','v_itemhead :'||v_mainsection;
+                raise notice '%','v_mainsection :'||v_mainsection;
+
+if(v_maincode <> '' and v_mainhead <> '') then
+raise notice '%','p_mainhead :'||p_mainhead||'p_maincode :'||p_maincode;
+select count(*) into v_mainsection from epb_mainsection where itemcode=v_maincode;
+raise notice '%','v_mainsection :'||v_mainsection;
+    IF(v_mainsection = 0) THEN
+    v_epb_mainsection_id:=get_uuid();
+   --raise exception '%','v_mainsection :'||v_mainsection;
+                raise notice '%','p_mainhead :'||p_mainhead||'p_maincode :'||p_maincode;
+INSERT INTO epb_mainsection(
+                                                        epb_mainsection_id, ad_client_id, ad_org_id, isactive, created, 
+                                                        createdby, updated, updatedby, "name", 
+                                                        itemcode,documentno)
+                                VALUES (v_epb_mainsection_id, v_clientID,'0', 'Y', now(), 
+                                                 v_user, now(),v_user,v_mainhead,v_maincode,v_itemcode);
+v_epb_subsection_id:=get_uuid();
+                                 INSERT INTO epb_subsection(
+                                                           epb_subsection_id, epb_mainsection_id, ad_client_id, ad_org_id, 
+                                                           isactive, created, createdby, updated, updatedby,
+                                                           "name", itemcode,documentno)
+                                  VALUES (v_epb_subsection_id, v_epb_mainsection_id, v_clientID, '0', 'Y', now(), 
+                                                 v_user, now(),v_user, v_mainhead,v_maincode,v_itemcode);
+
+v_epb_subtasks_id:=get_uuid();
+                               INSERT INTO epb_subtasks(
+                                              epb_subtasks_id, epb_subsection_id, ad_client_id, ad_org_id, 
+                                              isactive, created, createdby, updated, updatedby, "name", itemcode,itemrange_code)
+                               VALUES (v_epb_subtasks_id, v_epb_subsection_id, v_clientID, '0', 'Y', now(), 
+                                                 v_user, now(), v_user,v_mainhead,v_maincode,v_itemcode);
+
+v_product_category_id:=get_uuid();
+                               INSERT INTO m_product_category(
+m_product_category_id, ad_client_id, ad_org_id, isactive, created, 
+createdby, updated, updatedby, "value", "name", 
+isdefault, plannedmargin, issummary, 
+em_epb_subtasks_id,em_epb_itemramge_code)
+VALUES (v_product_category_id,v_clientID, '0', 'Y', now(), 
+                                                 v_user, now(), v_user, v_maincode,v_mainhead, 'N', 
+0, 'N',v_epb_subtasks_id,v_itemcode);
+
+                                v_product_id:=get_uuid();
+
+INSERT INTO m_product(
+m_product_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+updated, updatedby, "value", "name",  c_uom_id,  
+ispurchased,  m_product_category_id, c_taxcategory_id,producttype,production)
+VALUES (v_product_id, v_clientID,'0', 'Y', now(),v_user, 
+now(),v_user, v_itemcode,v_mainhead, 
+(select c_uom_id from c_uom where name like 'Unit'), 
+'Y', v_product_category_id, 
+(select c_taxcategory_id from c_taxcategory where name like 'NO TAX'),'I','N');
+INSERT INTO m_productprice(
+                                                             m_productprice_id, m_pricelist_version_id, m_product_id, ad_client_id, 
+                                                                ad_org_id, isactive, created, createdby, updated, updatedby, 
+                                                                pricelist, pricestd, pricelimit, "cost")
+VALUES (get_uuid(), (select m_pricelist_version_id from m_pricelist_version where name 
+like 'Vendor Price List Version 1'), v_product_id,  v_clientID, 
+                                              '0', 'Y', now(),v_user, 
+now(),v_user, 
+                                                        0, 0, 0, 0);    
+
+                      ELSE
+
+                               UPDATE epb_mainsection SET NAME = v_mainhead WHERE itemcode=v_maincode;  
+                               UPDATE epb_subsection SET NAME = v_mainhead WHERE itemcode=v_maincode;
+                               UPDATE epb_subtasks SET NAME = v_mainhead WHERE itemcode=v_maincode;
+                               UPDATE m_product_category SET name = v_mainhead WHERE value=v_maincode;
+                               UPDATE m_product SET name = v_mainhead WHERE value=v_itemcode;                           
+
+    END IF; 
+    
+end if;    
+
+if( v_mainhead <> '' and v_subhead <> '') then
+         
+                         select count(*) into v_subsection from epb_subsection where itemcode=p_mainhead;
+         raise notice '%','v_subsection :'||v_subsection;
+                              IF(v_subsection = 0) THEN
+                             -- raise exception '%','v_subsection :'||v_subsection;
+                              select substring(v_mainhead from 1 for 1) into v_substrng;
+              raise notice '%','v_substrng :'||v_substrng;
+              select epb_mainsection_id into v_epb_mainsection_id from epb_mainsection where itemcode like v_substrng||'%';
+              raise notice '%','p_mainhead :'||p_mainhead||'p_subhead :'||p_subhead||'v_epb_mainsection_id :'||v_epb_mainsection_id;
+                              v_epb_subsection_id:=get_uuid();
+                  INSERT INTO epb_subsection(
+                                                           epb_subsection_id, epb_mainsection_id, ad_client_id, ad_org_id, 
+                                                           isactive, created, createdby, updated, updatedby,
+                                                           "name", itemcode,documentno)
+                                  VALUES (v_epb_subsection_id, v_epb_mainsection_id, v_clientID, '0', 'Y', now(), 
+                                                 v_user, now(),v_user, v_subhead, v_mainhead,v_itemcode);
+                                                 
+                                  v_epb_subtasks_id:=get_uuid();
+                                 INSERT INTO epb_subtasks(
+                                              epb_subtasks_id, epb_subsection_id, ad_client_id, ad_org_id, 
+                                              isactive, created, createdby, updated, updatedby, "name", itemcode,itemrange_code)
+                                 VALUES (v_epb_subtasks_id, v_epb_subsection_id, v_clientID, '0', 'Y', now(), 
+                                                 v_user, now(), v_user, v_subhead, v_mainhead,v_itemcode);               
+                                 v_product_category_id:=get_uuid();
+                               INSERT INTO m_product_category(
+m_product_category_id, ad_client_id, ad_org_id, isactive, created, 
+createdby, updated, updatedby, "value", "name", 
+isdefault, plannedmargin, issummary, 
+em_epb_subtasks_id,em_epb_itemramge_code)
+VALUES (v_product_category_id,v_clientID, '0', 'Y', now(), 
+                                                 v_user, now(), v_user, v_mainhead, v_subhead, 'N', 
+0, 'N',v_epb_subtasks_id,v_itemcode);
+
+
+v_product_id:=get_uuid();
+INSERT INTO m_product(
+m_product_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+updated, updatedby, "value", "name",  c_uom_id,  
+ispurchased,  m_product_category_id, c_taxcategory_id,producttype,production)
+VALUES (v_product_id, v_clientID,'0', 'Y', now(),v_user, 
+now(),v_user, v_itemcode, v_subhead, 
+(select c_uom_id from c_uom where name like 'Unit'), 
+'Y', v_product_category_id, 
+(select c_taxcategory_id from c_taxcategory where name like 'NO TAX'),'I','N');
+INSERT INTO m_productprice(
+                                                             m_productprice_id, m_pricelist_version_id, m_product_id, ad_client_id, 
+                                                                ad_org_id, isactive, created, createdby, updated, updatedby, 
+                                                                pricelist, pricestd, pricelimit, "cost")
+VALUES (get_uuid(), (select m_pricelist_version_id from m_pricelist_version where name 
+like 'Vendor Price List Version 1'), v_product_id,  v_clientID, 
+                                              '0', 'Y', now(),v_user, 
+now(),v_user, 
+                                                        0, 0, 0, 0);    
+
+                                                -- update epb_subsection set itemcode=v_mainhead , name = v_subhead where epb_mainsection_id =v_epb_mainsection_id;
+
+                               ELSE 
+                                    
+     UPDATE epb_subsection SET NAME = v_subhead WHERE itemcode=p_mainhead;
+                               UPDATE epb_subtasks SET NAME = v_subhead WHERE itemcode=p_mainhead;
+                               UPDATE m_product_category SET name = v_subhead WHERE value=v_maincode;
+                               UPDATE m_product SET NAME = v_subhead WHERE value=v_itemcode;                           
+
+                                                
+                             END IF;
+                             select count(*) into v_unbudgetedcount from epb_subsection where itemcode like (select substring(v_mainhead from 1 for 1)||99);
+                             --raise exception '%','v_unbudgetedcount :'||v_unbudgetedcount; 
+                             if(v_unbudgetedcount = 0) then
+select substring(v_mainhead from 1 for 1) into v_unbudgetedmain;
+INSERT INTO epb_subsection(
+                                                           epb_subsection_id, epb_mainsection_id, ad_client_id, ad_org_id, 
+                                                           isactive, created, createdby, updated, updatedby,
+                                                           "name", itemcode,documentno)
+                                  VALUES (get_uuid(), (select epb_mainsection_id  from epb_mainsection where itemcode like v_unbudgetedmain||'%'),         v_clientID, '0', 'Y', now(), 
+v_user, now(),v_user, 'Un Budgeted Cost',
+                                                  v_unbudgetedmain||'99',v_unbudgetedmain||'99000000');
+
+                             end if;
+               end if;
+     
+if(v_subhead <> '' and v_costcode <> '') then  
+select count(*) into v_subtask from epb_subtasks where itemcode=v_subhead;
+
+         
+      IF(v_subtask = 0) THEN
+      --raise exception '%','v_subtask :'||v_subtask;
+
+      select substring(v_subhead from 1 for 3) into v_substrng;
+   
+                      select epb_subsection_id into v_epb_subsection_id from epb_subsection where itemcode=v_substrng;
+      v_epb_subtasks_id:=get_uuid();
+                              INSERT INTO epb_subtasks(
+                                              epb_subtasks_id, epb_subsection_id, ad_client_id, ad_org_id, 
+                                              isactive, created, createdby, updated, updatedby, "name", itemcode,itemrange_code)
+                               VALUES (v_epb_subtasks_id, v_epb_subsection_id, v_clientID, '0', 'Y', now(), 
+                                                 v_user, now(), v_user,v_costcode, v_subhead,v_itemcode);
+
+
+                v_product_category_id:=get_uuid();
+                               INSERT INTO m_product_category(
+m_product_category_id, ad_client_id, ad_org_id, isactive, created, 
+createdby, updated, updatedby, "value", "name", 
+isdefault, plannedmargin, issummary, 
+em_epb_subtasks_id,em_epb_itemramge_code)
+VALUES (v_product_category_id,v_clientID, '0', 'Y', now(), v_user, now(), v_user, v_subhead,v_costcode , 'N', 
+0, 'N',v_epb_subtasks_id,v_itemcode);
+
+
+v_product_id:=get_uuid();
+INSERT INTO m_product(
+m_product_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+updated, updatedby, "value", "name",  c_uom_id,  
+ispurchased,  m_product_category_id, c_taxcategory_id,producttype,production)
+VALUES (v_product_id, v_clientID,'0', 'Y', now(),v_user, 
+now(),v_user, v_itemcode, v_costcode, 
+(select c_uom_id from c_uom where name like 'Unit'), 
+'Y', v_product_category_id, 
+(select c_taxcategory_id from c_taxcategory where name like 'NO TAX'),'I','N');
+INSERT INTO m_productprice(
+                                                             m_productprice_id, m_pricelist_version_id, m_product_id, ad_client_id, 
+                                                                ad_org_id, isactive, created, createdby, updated, updatedby, 
+                                                                pricelist, pricestd, pricelimit, "cost")
+VALUES (get_uuid(), (select m_pricelist_version_id from m_pricelist_version where name 
+like 'Vendor Price List Version 1'), v_product_id,  v_clientID, 
+                                              '0', 'Y', now(),v_user, 
+now(),v_user, 
+                                                        0, 0, 0, 0); 
+
+                          ELSE
+
+UPDATE epb_subtasks SET NAME = v_costcode WHERE  itemcode=v_subhead;
+                               UPDATE m_product_category SET name = v_costcode WHERE value=v_subhead;
+                               UPDATE m_product SET NAME = v_costcode WHERE value=v_itemcode;       
+                                                        
+      END IF;
+
+      select count(*) into v_unbudgetedcount from epb_subtasks where itemcode like (select substring(v_subhead from 1 for 3)||99);
+                             --raise exception '%','v_unbudgetedcount :'||v_unbudgetedcount; 
+                             if(v_unbudgetedcount = 0) then
+select substring(v_subhead from 1 for 3) into v_unbudgetedmain;
+
+INSERT INTO epb_subtasks(
+                                              epb_subtasks_id, epb_subsection_id, ad_client_id, ad_org_id, 
+                                              isactive, created, createdby, updated, updatedby, "name", itemcode,itemrange_code)
+                               VALUES (get_uuid(), (select epb_subsection_id  from epb_subsection where itemcode like v_unbudgetedmain),
+                                v_clientID, '0', 'Y', now(), 
+                                                 v_user, now(), v_user,'Un Budgeted Cost', v_unbudgetedmain||'99',v_unbudgetedmain||'990000');
+
+                             end if;
+end if;      
+                if(v_costcode <> '' and v_itemhead <> '') then     
+              select count(*) into v_productcat from m_product_category where value=v_costcode;
+                      IF(v_productcat = 0) THEN
+                      --raise exception '%','v_productcat :'||v_productcat;
+                      select substring(v_costcode from 1 for 5) into v_substrng;
+                      select epb_subtasks_id into v_epb_subtasks_id from epb_subtasks where itemcode=v_substrng;
+
+                      v_product_category_id:=get_uuid();
+INSERT INTO m_product_category(
+m_product_category_id, ad_client_id, ad_org_id, isactive, created, 
+createdby, updated, updatedby, "value", "name", 
+isdefault, plannedmargin, issummary, 
+em_epb_subtasks_id,em_epb_itemramge_code)
+VALUES (v_product_category_id,v_clientID, '0', 'Y', now(), 
+                                                 v_user, now(), v_user, v_costcode, v_itemhead, 'N', 
+0, 'N',v_epb_subtasks_id,v_itemcode);
+                                v_product_id:=get_uuid(); 
+INSERT INTO m_product(
+m_product_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+updated, updatedby, "value", "name",  c_uom_id,  
+ispurchased,  m_product_category_id, c_taxcategory_id,producttype,production)
+VALUES (v_product_id, v_clientID,'0', 'Y', now(),v_user, 
+now(),v_user, v_itemcode, v_itemhead, 
+(select c_uom_id from c_uom where name like 'Unit'), 
+'Y', v_product_category_id, 
+(select c_taxcategory_id from c_taxcategory where name like 'NO TAX'),'I','N');
+
+INSERT INTO m_productprice(
+                                                             m_productprice_id, m_pricelist_version_id, m_product_id, ad_client_id, 
+                                                                ad_org_id, isactive, created, createdby, updated, updatedby, 
+                                                                pricelist, pricestd, pricelimit, "cost")
+VALUES (get_uuid(), (select m_pricelist_version_id from m_pricelist_version where name 
+like 'Vendor Price List Version 1'), v_product_id,  v_clientID, 
+                                              '0', 'Y', now(),v_user, 
+now(),v_user, 
+                                                        0, 0, 0, 0);
+                                 --update m_product_category set value=v_costcode , name = v_itemhead where em_epb_subtasks_id =v_epb_subtasks_id;
+
+                                 else
+
+                                 UPDATE m_product_category SET name = v_itemhead WHERE value=v_costcode;
+UPDATE m_product SET NAME = v_itemhead WHERE value=v_itemcode;  
+
+     END IF;
+
+     select count(*) into v_unbudgetedcount from m_product_category where value like (select substring(v_costcode from 1 for 5)||99);
+                             --raise exception '%','v_unbudgetedcount :'||v_unbudgetedcount; 
+                             if(v_unbudgetedcount = 0) then
+select substring(v_costcode from 1 for 5) into v_unbudgetedmain;
+
+INSERT INTO m_product_category(
+m_product_category_id, ad_client_id, ad_org_id, isactive, created, 
+createdby, updated, updatedby, "value", "name", 
+isdefault, plannedmargin, issummary, 
+em_epb_subtasks_id,em_epb_itemramge_code)
+VALUES (get_uuid(),v_clientID, '0', 'Y', now(), 
+                                                 v_user, now(), v_user,  v_unbudgetedmain||'99', 'Un Budgeted Cost', 'N', 
+0, 'N',(select epb_subtasks_id  from epb_subtasks where itemcode like v_unbudgetedmain),v_unbudgetedmain||'9900');
+
+                             end if;      
+                end if; 
+
+               if(v_itemdesc <> '' and v_itemhead <> '') then     
+                   
+
+select count(*) into v_product from m_product where value=v_itemhead;
+                      IF(v_product = 0) THEN
+                          -- raise exception '%','v_product :'||v_product;
+
+                           select substring(v_itemhead from 1 for 7) into v_substrng;
+                           select m_product_category_id into v_product_category_id from m_product_category where value=v_substrng;
+
+                      v_product_id:=get_uuid();
+                     INSERT INTO m_product(
+m_product_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+updated, updatedby, "value", "name",  c_uom_id,  
+ispurchased,  m_product_category_id, c_taxcategory_id,producttype,production)
+VALUES (v_product_id, v_clientID,'0', 'Y', now(),v_user, 
+now(),v_user, v_itemcode, v_itemdesc, 
+(select c_uom_id from c_uom where name like 'Unit'), 
+'Y', v_product_category_id, 
+(select c_taxcategory_id from c_taxcategory where name like 'NO TAX'),'I','N');
+INSERT INTO m_productprice(
+                                                                m_productprice_id, m_pricelist_version_id, m_product_id, ad_client_id, 
+                                                                ad_org_id, isactive, created, createdby, updated, updatedby, 
+                                                                pricelist, pricestd, pricelimit, "cost")
+VALUES (get_uuid(), (select m_pricelist_version_id from m_pricelist_version where name 
+like 'Vendor Price List Version 1'), v_product_id,  v_clientID, 
+                                              '0', 'Y', now(),v_user, 
+now(),v_user, 
+                                                        0, 0, 0, 0);
+
+                               else
+                               UPDATE m_product SET NAME = v_itemdesc WHERE value=v_itemcode;                           
+     END IF;      
+                end if; 
+return 1;
+END DTZK_DATAIMPORT_COSTCODE
+]]></body>
+    </function>
+  </database>

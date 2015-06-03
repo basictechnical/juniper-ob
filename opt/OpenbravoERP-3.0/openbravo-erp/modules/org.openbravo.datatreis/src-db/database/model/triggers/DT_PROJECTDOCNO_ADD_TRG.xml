@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+  <database name="TRIGGER DT_PROJECTDOCNO_ADD_TRG">
+    <trigger name="DT_PROJECTDOCNO_ADD_TRG" table="C_ORDER" fires="before" insert="true" update="true" delete="false" foreach="row">
+      <body><![CDATA[
+  
+   v_plaindoc character varying(20);
+   v_projectvalue character varying(20);
+   v_docno character varying(20);
+   v_amendment NUMBER;
+   v_project_requisition_ID  character varying(32);
+   
+BEGIN
+
+
+IF INSERTING OR UPDATING  THEN
+
+
+--select m_requisition.em_dt_project_id into v_project_requisition_ID from m_requisition join
+--m_requisitionline on m_requisition.m_requisition_id=m_requisitionline.m_requisition_id
+--join m_requisitionorder on m_requisitionorder.m_requisitionline_id=m_requisitionline.m_requisitionline_id
+--join c_orderline on m_requisitionorder.c_orderline_id=c_orderline.c_orderline_id
+--join c_order on c_order.c_order_id=c_orderline.c_order_id 
+--where c_order.c_order_id=NEW.c_order_id;
+
+
+IF (:NEW.issotrx = 'N')THEN
+Select value into v_projectvalue from c_project where c_project_id=:NEW.c_project_id;
+ 
+
+
+Select coalesce(em_dt_ammendment,0) into v_amendment from c_order where c_order_id=:NEW.c_order_id;
+
+IF (:NEW.em_dt_plaindocno IS NULL) THEN 
+:NEW.em_dt_plaindocno:=:NEW.documentno;
+END IF;
+
+IF ( :NEW.docaction='RE') THEN
+
+:NEW.em_dt_ammendment:=v_amendment+1;
+--RAISE EXCEPTION '%ammendment',:NEW.em_dt_ammendment;
+END IF;
+
+--RAISE v_amendment;
+IF(:NEW.em_dt_ammendment <> 0 and v_projectvalue IS NOT NULL ) THEN
+
+ 
+:NEW.documentno:=v_projectvalue||'/'||:NEW.em_dt_plaindocno||'/'||'A'|| :NEW.em_dt_ammendment;
+                ELSE
+IF(v_projectvalue IS NULL and :new.em_dt_ammendment <>0) THEN
+:NEW.documentno:=:NEW.em_dt_plaindocno||'/'||'A'|| :NEW.em_dt_ammendment;
+                 
+                        ELSIF(v_projectvalue IS NULL) THEN
+:NEW.documentno:=:NEW.em_dt_plaindocno;
+ELSE
+:NEW.documentno:=v_projectvalue||'/'||:NEW.em_dt_plaindocno;
+END IF;
+END IF;
+
+END IF;
+ END IF;
+
+END DT_PROJECTDOCNO_ADD_TRG
+]]></body>
+    </trigger>
+  </database>

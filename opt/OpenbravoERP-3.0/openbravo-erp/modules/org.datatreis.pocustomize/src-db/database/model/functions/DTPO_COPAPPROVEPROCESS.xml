@@ -1,0 +1,148 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTPO_COPAPPROVEPROCESS">
+    <function name="DTPO_COPAPPROVEPROCESS" type="NULL">
+      <parameter name="pinstance_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[-- Parameter
+  TYPE RECORD IS REF CURSOR;
+    v_Record_ID VARCHAR(32); 
+    v_grandtotal NUMBER;
+    Cur_Parameter RECORD;
+    CurSetInstance RECORD;
+    CurOrderLineInstance RECORD;
+    v_status VARCHAR(6); 
+    v_ResultStr VARCHAR(300) ;
+    v_sumQtyOrderline NUMBER;
+    v_sumQtyReqOrderLine NUMBER;
+    v_diffqty NUMBER;
+    v_USER VARCHAR(32); 
+    V_message VARCHAR(300) :='';
+    v_Result NUMBER:=1;
+    v_workStatus varchar(6);
+    v_isworkorder NUMBER;
+    v_iscontractwork NUMBER;
+    v_cummulative_amt NUMBER;
+    v_exsisting_amt VARCHAR(255);
+      --  v_OrderID varchar(32);
+        v_row_id varchar(32);
+        v_rate NUMBER(10,2):=0;
+        v_qtyordered NUMBER:=0;
+        v_linenetamt NUMBER(10,2):=0;
+    v_clientID VARCHAR(32); 
+    v_orgID VARCHAR(32); 
+    v_userID VARCHAR(32); 
+    v_orderID VARCHAR(32);
+    V_inout_ID VARCHAR(32);
+    v_BPartnerID VARCHAR(32);
+    v_orderline_ID VARCHAR(32);
+    v_BPartnerLocationID VARCHAR(32);
+    v_ProjectID VARCHAR(32);
+      BEGIN
+    --  Update AD_PInstance
+    --  DBMS_OUTPUT.PUT_LINE('Updating PInstance - Processing');
+    --RAISE_APPLICATION_ERROR(-20000, 'procedur calling');
+    v_ResultStr:='PInstanceNotFound';
+    AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'Y', NULL, NULL) ;
+  BEGIN --BODY
+    -- Get Parameters
+    v_ResultStr:='ReadingParameters';
+    FOR Cur_Parameter IN
+      (SELECT i.Record_ID,
+        p.ParameterName,
+        p.P_String,
+        p.P_Number,
+        p.P_Date,
+        i.createdBy
+      FROM AD_PInstance i
+      LEFT JOIN AD_PInstance_Para p
+        ON i.AD_PInstance_ID=p.AD_PInstance_ID
+      WHERE i.AD_PInstance_ID=PInstance_ID
+      ORDER BY p.SeqNo
+      )
+    LOOP
+     
+            v_Record_ID := Cur_Parameter.Record_ID;
+           -- raise exception '%','order id '||v_Record_ID;
+    end loop;
+    
+    BEGIN
+    
+       AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 1, NULL);
+       select c_order.ad_client_id,c_order.ad_org_id,c_order.createdby,c_order.c_order_id,c_order.c_bpartner_id,c_order.c_bpartner_location_id ,c_order.c_project_id
+       into v_clientID, v_orgID,v_userID,v_orderID,v_BPartnerID,v_BPartnerLocationID,v_ProjectID from dtpo_pocopfile
+       join c_order on c_order.c_order_id=dtpo_pocopfile.c_order_id where dtpo_pocopfile_id=v_Record_ID;
+       
+                        --V_inout_ID:=get_uuid();
+       			--INSERT INTO m_inout(
+                          --                   m_inout_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+                            --                 updated, updatedby, documentno, docaction, docstatus, 
+                              --               c_doctype_id, c_order_id, 
+                                ---             dateordered, movementtype, movementdate, dateacct, 
+                                   --          c_bpartner_id, c_bpartner_location_id, m_warehouse_id,
+                                     --        deliveryrule, freightcostrule, deliveryviarule,  priorityrule, c_project_id)
+                        --VALUES (V_inout_ID,v_clientID, v_orgID, 'Y',TO_DATE(NOW()) ,v_userID, 
+                          --      TO_DATE(NOW()),v_userID,(SELECT MAX(documentno)::integer+1 FROM M_InOut)
+                            --     ,'CO', 'DR','2030AD7DD4284E2B936E261662EF735A',v_orderID, 
+                              --  TO_DATE(NOW()),'V+',TO_DATE(NOW()) , TO_DATE(NOW()), v_BPartnerID, v_BPartnerLocationID, 
+                                --'4DAC95FE201F444EBF250584ED4B42CE', 'A', 'I', 'P', 5,v_ProjectID);
+			
+
+
+			FOR CurOrderLineInstance IN (
+				
+				select distinct sum(copamt) as copamt,sum(productqty-damaged_returned) as qty,productname,m_product.m_product_id,m_product.c_uom_id from dtpo_itemcop 
+				join dtpo_pocopfile on dtpo_pocopfile.dtpo_pocopfile_id=dtpo_itemcop.dtpo_pocopfile_id 
+				join m_product on m_product.name=dtpo_itemcop.productname
+				where dtpo_pocopfile.c_order_id IN (
+				select c_order_id from c_orderline join m_product on m_product.m_product_id=c_orderline.m_product_id 
+					where c_orderline.c_order_id=(select c_order_id from dtpo_pocopfile 
+					where dtpo_pocopfile_id=v_Record_ID
+					)and copstatus NOT IN('RJ')) 
+					group by productname,m_product.m_product_id,m_product.c_uom_id order by productname) LOOP
+
+
+                               --Raise EXCEPTION '%','Aprrove process in progress'||CurOrderLineInstance.productname;
+                                select c_tax.rate,qtyordered,linenetamt,c_orderline_id into v_rate,v_qtyordered,v_linenetamt,v_orderline_ID from c_orderline 
+                                join c_tax on c_tax.c_tax_id=c_orderline.c_tax_id 
+                                where m_product_id=CurOrderLineInstance.m_product_id and c_order_id=(select c_order_id from dtpo_pocopfile 
+					where dtpo_pocopfile_id=v_Record_ID);
+				/*update c_orderline set em_dtpo_copcumamt=CurOrderLineInstance.copamt,em_dtpo_certfiedqty=CurOrderLineInstance.qty ,
+				 em_dtpo_pendingamt = (v_linenetamt+(v_linenetamt*v_rate)/100)-CurOrderLineInstance.copamt,
+                                 em_dtpo_pendingqty = v_qtyordered - CurOrderLineInstance.qty
+					where m_product_id=CurOrderLineInstance.m_product_id;*/
+
+
+				--INSERT INTO m_inoutline(
+				--		m_inoutline_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+				--		updated, updatedby, line,
+				--		m_inout_id, c_orderline_id, 
+				--		 m_product_id,c_uom_id, movementqty)
+				--VALUES (get_uuid(), v_clientID, v_orgID, 'Y', TO_DATE(NOW()) ,v_userID ,
+				--		TO_DATE(NOW()) ,v_userID,(SELECT COALESCE(MAX(Line),0)+10 AS DefaultValue FROM M_InOutLine WHERE M_InOut_ID=V_inout_ID),
+				--		V_inout_ID,v_orderline_id,
+				--		CurOrderLineInstance.m_product_id,CurOrderLineInstance.c_uom_id,0);
+
+					
+
+			END LOOP;
+		--Select m_inout_post(NULL,V_inout_ID);
+		 DTPO_CERTIFIEDCOPAMOUNT(PInstance_ID) ;
+
+
+
+   
+   
+   --RETURN;
+  END; --BODY
+EXCEPTION
+WHEN OTHERS THEN
+   v_ResultStr:= '@ERROR=' || SQLERRM;
+  
+  AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', v_Result, v_ResultStr);
+ END;
+  --RETURN;
+END DTPO_COPAPPROVEPROCESS
+]]></body>
+    </function>
+  </database>

@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTZK_ASSOCIATEITEMCODE">
+    <function name="DTZK_ASSOCIATEITEMCODE" type="NULL">
+      <parameter name="pinstance_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[-- Parameter
+  TYPE RECORD IS REF CURSOR;
+      v_exsisting_amt VARCHAR(255);
+
+    v_Record_ID VARCHAR(32); 
+    v_grandtotal NUMBER;
+    Cur_Parameter RECORD;
+    CurSetInstance RECORD;
+    v_status VARCHAR(6); 
+    v_ResultStr VARCHAR(300) ;
+    v_sumQtyOrderline NUMBER;
+    v_sumQtyReqOrderLine NUMBER;
+    v_diffqty NUMBER;
+    v_USER VARCHAR(32); 
+    V_message VARCHAR(300) :='';
+    v_Result NUMBER:=1;
+    v_workStatus varchar(6);
+    v_cummulative_amt NUMBER;
+         v_em_epb_mainsection_id varchar(32);
+        v_row_id varchar(32);
+v_totallines NUMBER;
+v_projectID varchar(32);
+v_subsection varchar(100);
+       BEGIN
+    --  Update AD_PInstance
+    --  DBMS_OUTPUT.PUT_LINE('Updating PInstance - Processing');
+    --RAISE_APPLICATION_ERROR(-20000, 'procedur calling');
+    v_ResultStr:='PInstanceNotFound';
+    AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'Y', NULL, NULL) ;
+  BEGIN --BODY
+    -- Get Parameters
+    v_ResultStr:='ReadingParameters';
+    FOR Cur_Parameter IN
+      (SELECT i.Record_ID,
+        p.ParameterName,
+        p.P_String,
+        p.P_Number,
+        p.P_Date,
+        i.createdBy
+      FROM AD_PInstance i
+      LEFT JOIN AD_PInstance_Para p
+        ON i.AD_PInstance_ID=p.AD_PInstance_ID
+      WHERE i.AD_PInstance_ID=PInstance_ID
+      ORDER BY p.SeqNo
+      )
+    LOOP
+     
+            v_Record_ID := Cur_Parameter.Record_ID;
+           -- raise exception '%','order id '||v_Record_ID;
+    end loop;
+    
+    BEGIN
+    alter table ilc_pocop disable trigger ilc_copvaluegen_trg;
+       AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 1, NULL);
+    --RETURN;
+   update ilc_pocop set em_dtzk_associatepb='Y' where ilc_pocop_id=v_Record_ID;
+      update ilc_pocop set em_dtzk_associatepb='N' where ilc_pocop_id<>v_Record_ID;
+
+  END; --BODY
+EXCEPTION
+WHEN OTHERS THEN
+   v_ResultStr:= '@ERROR=' || SQLERRM;
+
+
+  
+  AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', v_Result, v_ResultStr);
+ END;
+  --RETURN;
+END DTZK_ASSOCIATEITEMCODE
+]]></body>
+    </function>
+  </database>

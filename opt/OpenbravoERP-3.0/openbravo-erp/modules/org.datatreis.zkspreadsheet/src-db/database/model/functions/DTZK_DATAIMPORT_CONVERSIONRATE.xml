@@ -1,0 +1,197 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTZK_DATAIMPORT_CONVERSIONRATE">
+    <function name="DTZK_DATAIMPORT_CONVERSIONRATE" type="NUMERIC">
+      <parameter name="p_copdocumentno" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_itemcode" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_itemdesc" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_coppercentage" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_copqty" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_copbasic" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_copinsurance" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_copfreight" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_coppackage" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_copothers" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_copamt" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_bookname" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_order_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_crate" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_orderqty" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_bfrcnvrsntotal" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[/*************************************************************************
+* The contents of this file are subject to the Openbravo  Public  License
+* Version  1.1  (the  "License"),  being   the  Mozilla   Public  License
+* Version 1.1  with a permitted attribution clause; you may not  use this
+* file except in compliance with the License. You  may  obtain  a copy of
+* the License at http://www.openbravo.com/legal/license.html
+* Software distributed under the License  is  distributed  on  an "AS IS"
+* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+* License for the specific  language  governing  rights  and  limitations
+* under the License.
+* The Original Code is Openbravo ERP.
+* The Initial Developer of the Original Code is Openbravo SLU
+* All portions are Copyright (C) 2008-2009 Openbravo SLU
+* All Rights Reserved.
+* Contributor(s):  ______________________________________.
+************************************************************************/      
+
+  v_countschemas INTEGER:=1; 
+  v_parent_id ad_treenode.parent_id%TYPE;
+  v_node_id ad_treenode.parent_id%TYPE;
+v_clientID varchar(32);
+ v_orgID varchar(32); 
+  cur_org_le RECORD;
+  v_rowid NUMBER;
+  v_data varchar(255);
+  v_columnid NUMBER;
+  v_maindata varchar(255);
+  v_dataexsists NUMBER;
+  v_MData NUMBER;
+  v_SData NUMBER;
+  v_contractamt NUMBER(10,2);
+  v_userID varchar(32);
+  v_count NUMBER:=0;
+  v_contractcopID character varying(32);
+  v_sumcopvalue NUMBER(10,2);
+  v_contractboqfileID  character varying(32);
+  v_getuuid1 character varying(32);
+  v_getuuid2 character varying(32);
+  v_pocopfile_id character varying(32);
+  v_copno character varying(32);
+  v_copdocexsists character varying(60);
+  v_orderline_id NUMBER;
+  v_filetype character varying(60);
+  v_advancetype character varying(60);
+  v_paymenttype character varying(60);
+  cur_grndata record;
+  cur_cummulativedata record;
+  v_copamount NUMBER;
+  vp_itemdesc character varying (255);
+  vp_order_id character varying(32);
+  v_recoverable NUMBER;
+  v_coptotalqty NUMBER:=0;
+  v_coptotalamount NUMBER:=0.00;
+  v_orderqty NUMBER:=0;
+  v_orderamt NUMBER:=0.00;
+  v_existqty NUMBER:=0.0;
+  v_existprctg NUMBER:=0.0;
+  v_existname character varying (255);
+  v_tempCopAmt NUMBER;
+  v_tempOrderAmt NUMBER;
+   v_lineID text;
+  v_pValue text;
+  v_pName text;
+  v_aDescription text; 
+  v_prevFileID character varying (32);
+  v_value NUMBER:=0;
+  v_ProjectID character varying (32); 
+  v_prevNumericCopNo NUMBER;
+  v_prevStringCopNo text;
+  v_prevCOPNo text;
+BEGIN
+vp_itemdesc:=p_itemdesc;
+vp_order_id := p_order_id;
+select dtpo_pocopfile_id,dtpo_pocopfile.ad_client_id,dtpo_pocopfile.ad_org_id,dtpo_pocopfile.createdby,c_order.c_project_id into v_pocopfile_id,v_clientID,v_orgID,v_userID,v_ProjectID
+                from dtpo_pocopfile join C_order on  dtpo_pocopfile.c_order_id = c_order.c_order_id where dtpo_pocopfile.c_order_id=p_order_id and filename = p_bookname;
+
+
+select count(c_orderline_id) into v_orderline_id from c_orderline 
+                join m_attributesetinstance on m_attributesetinstance.m_attributesetinstance_id = c_orderline.m_attributesetinstance_id
+join m_product on m_product.m_product_id=c_orderline.m_product_id 
+where m_product.value=p_itemcode and c_order_id=p_order_id and
+m_attributesetinstance.description = vp_itemdesc and c_orderline.qtyordered = p_orderqty and c_orderline.linenetamt = p_bfrcnvrsntotal * p_crate;
+
+               
+select linenetamt,qtyordered,sum(productqty),trunc(sum(grnquantity),0) into v_orderamt,v_orderqty,v_coptotalqty,v_coptotalamount from c_orderline join dtpo_itemcop on 
+c_orderline.c_orderline_id = dtpo_itemcop.c_orderline_id where c_order_id=vp_order_id and  
+attributename = vp_itemdesc and searchkey = p_itemcode and c_orderline.qtyordered = p_orderqty and c_orderline.linenetamt = p_bfrcnvrsntotal * p_crate 
+group by  linenetamt,qtyordered; 
+             
+
+IF(p_copamt <= 0 and v_orderamt <= 0) Then
+v_tempCopAmt:= p_copamt * (-1);
+v_tempOrderAmt:= v_orderamt * (-1);
+
+Else
+v_tempCopAmt:= p_copamt;
+v_tempOrderAmt:= v_orderamt;
+END IF;
+
+IF(p_copqty > v_orderqty or  v_tempCopAmt*p_crate > ((v_tempOrderAmt/100)*5)+v_tempOrderAmt)Then
+raise exception '%','Here '||vp_itemdesc||' Order Qty '||v_orderqty||' Total Cerification Qty '|| p_copqty||' and Order Amt '||v_orderamt/p_cRate||' Certification Amt '||p_copamt;
+Else                  
+update dtpo_pocopfile set copno=p_copdocumentno where dtpo_pocopfile_id=v_pocopfile_id;
+delete from dtpo_itemcop where attributename = vp_itemdesc and dtpo_pocopfile_id=v_pocopfile_id and productqty = p_copqty 
+and coppercentage = p_coppercentage and searchkey=p_itemcode and copamt = p_copamt * p_crate;
+
+
+
+select c_orderline.c_orderline_id,m_product.value,m_product.name,m_attributesetinstance.description into v_lineID,v_pValue,v_pName,v_aDescription
+from c_orderline left join m_product on m_product.m_product_id=c_orderline.m_product_id
+left join m_attributesetinstance on  m_attributesetinstance.m_attributesetinstance_id = c_orderline.m_attributesetinstance_id
+left join m_attributeset on m_attributeset.m_attributeset_id = m_attributesetinstance.m_attributeset_id
+where c_order_id=vp_order_id and m_attributesetinstance.description=vp_itemdesc
+and c_orderline.c_orderline_id is not null and m_product.value=p_itemcode ;
+
+IF(p_copdocumentno like 'COP-R001') THEN
+v_value:=0; 
+else
+select right(p_copdocumentno,2) into v_prevCOPNo from dual;
+v_prevNumericCopNo:=v_prevCOPNo::numeric - 1;
+v_prevStringCopNo:=v_prevNumericCopNo;
+
+select dtpo_pocopfile_id into v_prevFileID from dtpo_pocopfile  join c_order on
+dtpo_pocopfile.c_order_id = c_order.c_order_id where dtpo_pocopfile.copno like '%'||v_prevStringCopNo||'%' and c_order.c_order_id = p_order_id;
+
+select coalesce(copamt,0) into v_value from dtpo_itemcop where searchkey = p_itemcode and attributename = vp_itemdesc and 
+c_project_id = v_ProjectID and dtpo_pocopfile_id = v_prevFileID; 
+END IF;
+
+ 
+INSERT INTO dtpo_itemcop(dtpo_itemcop_id, dtpo_pocopfile_id, ad_client_id, ad_org_id, isactive, created, 
+createdby, updated, updatedby, productname,searchkey, attributename,copbasic, copinsurance, 
+coppkg_fwdg, copothers, copfreight,coppercentage,productqty,copamt,c_orderline_id,c_project_id,grnquantity)
+VALUES (get_uuid(), v_pocopfile_id, v_clientID, v_orgID, 
+'Y', now(), v_userID, now(), v_userID, v_pName,v_pValue,
+v_aDescription, p_copbasic*p_cRate,p_copinsurance*p_cRate,p_coppackage*p_cRate,p_copothers*p_cRate,
+p_copfreight*p_cRate,p_coppercentage,p_copqty,p_copamt*p_cRate,v_lineID,v_ProjectID,(p_copamt * p_cRate)-(coalesce(v_value,0)));
+                     
+       
+       
+return 1;
+END IF;
+END DTZK_DATAIMPORT_CONVERSIONRATE
+]]></body>
+    </function>
+  </database>

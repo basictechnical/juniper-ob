@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+  <database name="TRIGGER PC_PENDINGREQ">
+    <trigger name="PC_PENDINGREQ" table="C_ORDERLINE" fires="after" insert="true" update="true" delete="false" foreach="row">
+      <body><![CDATA[
+  
+v_check CHAR(1);
+v_reqqty NUMBER;
+v_pendingqty NUMBER;
+v_orderqty NUMBER;
+  CurInstance RECORD;
+v_ReqID varchar(32);
+   v_count NUMBER;   
+   v_sum NUMBER;   
+BEGIN
+    
+    IF AD_isTriggerEnabled()='N' THEN RETURN;
+    END IF;
+    IF(UPDATING) THEN
+
+	  
+		select c_orderline.em_pc_requisitionline_id
+		,m_requisitionline.qty,m_requisitionline.em_pc_pendingqty,c_orderline.qtyordered,em_pc_check
+		 into v_ReqID, v_reqqty,v_pendingqty, v_orderqty, v_check from m_requisitionline 
+		left join c_orderline on m_requisitionline.m_requisitionline_id=c_orderline.em_pc_requisitionline_id
+		
+		where c_orderline.c_orderline_id=:new.c_orderline_id   ;
+		select count (*), sum (c_orderline.qtyordered) into v_count,v_sum from c_orderline where c_orderline.em_pc_requisitionline_id=v_ReqID;
+            --  Raise Exception '%', v_sum;
+		--Raise Exception '%', 'v_pendingqty'||v_pendingqty||'v_reqqty'||v_reqqty;
+
+		IF(v_reqqty = v_sum) THEN
+		
+                   -- Raise Exception '%', v_reqqty;
+		
+			update m_requisitionline  set em_pc_pendingqty= v_sum ,em_pc_check='Y'where m_requisitionline.m_requisitionline_id= v_ReqID;
+
+		
+		
+		else IF(v_reqqty <> v_sum) THEN
+		
+
+			update m_requisitionline  set em_pc_pendingqty=v_sum ,em_pc_check='N' where m_requisitionline.m_requisitionline_id= v_ReqID;
+          
+                           
+		END IF;
+		end if;
+		 IF(v_sum > v_reqqty) THEN
+           
+		Raise Exception '%', 'Order quantity is exceded than requisition quantity is: '||v_sum - v_reqqty;
+                  END IF;
+
+
+END IF;
+
+
+END PC_PENDINGREQ
+]]></body>
+    </trigger>
+  </database>

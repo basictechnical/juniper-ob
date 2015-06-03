@@ -1,0 +1,1256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Scenario2" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<style name="table">
+		<box>
+			<pen lineWidth="1.0" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table_TH" mode="Opaque" backcolor="#F0F8FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table_CH" mode="Opaque" backcolor="#BFE1FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table_TD" mode="Opaque" backcolor="#FFFFFF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<subDataset name="New Dataset 1">
+		<parameter name="C_Order_ID" class="java.lang.String"/>
+		<queryString>
+			<![CDATA[select distinct m_product.value as item,m_attributevalue.name description,m_attributevalue.em_dtpo_area as area,
+m_attributevalue.em_dtpo_make as make
+,m_attributevalue.em_dtpo_model as model,m_attributevalue.em_dtpo_itemno as itemno,m_attributevalue.em_dtpo_hsncode as hscode
+,m_attributevalue.em_dtpo_countryoforigin as country,m_attributevalue.em_dtpo_portofloading as port,
+m_attributevalue.em_dtpo_uom as uom,c_orderline.qtyordered as qty,c_orderline.em_dtpo_importbasic as basic,c_orderline.em_dtpo_excise as excise,
+c_orderline.em_dtpo_excisetotal as subtotal,c_orderline.em_dtpo_vat_cst as vatcst,c_orderline.em_dtpo_lbt as lbt,
+c_orderline.em_dtpo_insurance::numeric as insurance,
+c_orderline.em_dtpo_frieght as freight,c_orderline.em_dtpo_pkg as packing,c_orderline.em_dtpo_others::numeric as other,
+c_orderline.em_dtpo_total as suppltotal,c_orderline.linenetamt as amt
+ from c_orderline
+left join c_order on c_orderline.c_order_id=c_order.c_order_id
+left join m_product on c_orderline.m_product_id=m_product.m_product_id
+left join m_attributesetinstance on m_attributesetinstance.m_attributesetinstance_id=c_orderline.m_attributesetinstance_id
+left join m_attributeset on m_attributeset.m_attributeset_id=m_attributesetinstance.m_attributeset_id
+left join m_attributeuse on m_attributeuse.m_attributeset_id=m_attributeset.m_attributeset_id
+left join m_attributevalue on m_attributevalue.m_attribute_id=m_attributeuse.m_attribute_id
+
+where c_order.issotrx='N' and em_dtpo_orderscenario='TYPE2' and c_order.c_order_id=$P{C_Order_ID}]]>
+		</queryString>
+		<field name="item" class="java.lang.String"/>
+		<field name="description" class="java.lang.String"/>
+		<field name="area" class="java.lang.String"/>
+		<field name="make" class="java.lang.String"/>
+		<field name="model" class="java.lang.String"/>
+		<field name="itemno" class="java.lang.String"/>
+		<field name="hscode" class="java.lang.String"/>
+		<field name="country" class="java.lang.String"/>
+		<field name="port" class="java.lang.String"/>
+		<field name="uom" class="java.lang.String"/>
+		<field name="qty" class="java.math.BigDecimal"/>
+		<field name="basic" class="java.math.BigDecimal"/>
+		<field name="excise" class="java.math.BigDecimal"/>
+		<field name="subtotal" class="java.math.BigDecimal"/>
+		<field name="vatcst" class="java.math.BigDecimal"/>
+		<field name="lbt" class="java.math.BigDecimal"/>
+		<field name="insurance" class="java.math.BigDecimal"/>
+		<field name="freight" class="java.math.BigDecimal"/>
+		<field name="packing" class="java.math.BigDecimal"/>
+		<field name="other" class="java.math.BigDecimal"/>
+		<field name="suppltotal" class="java.math.BigDecimal"/>
+		<field name="amt" class="java.math.BigDecimal"/>
+		<variable name="AUTO_COUNT" class="java.lang.Integer">
+			<variableExpression><![CDATA[new Integer($V{AUTO_COUNT}.intValue() + 1)]]></variableExpression>
+			<initialValueExpression><![CDATA[new Integer(0)]]></initialValueExpression>
+		</variable>
+		<variable name="Tot_BasicEx" class="java.math.BigDecimal">
+			<variableExpression><![CDATA[$F{subtotal}.multiply($F{qty})]]></variableExpression>
+		</variable>
+		<variable name="Total_Basic" class="java.math.BigDecimal" calculation="Sum">
+			<variableExpression><![CDATA[$V{Tot_BasicEx}]]></variableExpression>
+		</variable>
+		<variable name="Net_VatCst" class="java.math.BigDecimal">
+			<variableExpression><![CDATA[$F{vatcst}.multiply( $F{qty})]]></variableExpression>
+		</variable>
+		<variable name="Total_VatCst" class="java.math.BigDecimal" calculation="Sum">
+			<variableExpression><![CDATA[$V{Net_VatCst}]]></variableExpression>
+		</variable>
+		<variable name="NetPkg" class="java.math.BigDecimal">
+			<variableExpression><![CDATA[$F{packing}.multiply( $F{qty} )]]></variableExpression>
+		</variable>
+		<variable name="TotalPkg" class="java.math.BigDecimal" calculation="Sum">
+			<variableExpression><![CDATA[$V{NetPkg}]]></variableExpression>
+		</variable>
+		<variable name="Insurance" class="java.math.BigDecimal">
+			<variableExpression><![CDATA[$F{qty}.multiply( $F{insurance} )]]></variableExpression>
+		</variable>
+		<variable name="Other" class="java.math.BigDecimal">
+			<variableExpression><![CDATA[$F{qty}.multiply( $F{other} )]]></variableExpression>
+		</variable>
+		<variable name="Total_Insurance" class="java.math.BigDecimal" calculation="Sum">
+			<variableExpression><![CDATA[$V{Insurance}]]></variableExpression>
+		</variable>
+		<variable name="Total_Other" class="java.math.BigDecimal" calculation="Sum">
+			<variableExpression><![CDATA[$V{Other}]]></variableExpression>
+		</variable>
+		<variable name="Grandtotal" class="java.math.BigDecimal">
+			<variableExpression><![CDATA[$V{Total_Basic}.add( $V{Total_VatCst} ).add( $V{TotalPkg}).add($V{Total_Insurance}).add($V{Total_Other})]]></variableExpression>
+		</variable>
+	</subDataset>
+	<parameter name="C_Order_ID" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[select distinct ad_org.ad_org_id,ad_org.name as org,c_bpartner.name as bpartner,c_bpartner_location.name as location,c_project.name as project,
+c_order.documentno as doc,c_order.dateordered as orderdate,c_order.em_dtpo_paymentdesc as paydesc,c_order.docstatus,
+c_order.em_dtpo_orderscenario as scenario from c_order
+left join ad_org on c_order.ad_org_id=ad_org.ad_org_id
+left join c_bpartner on c_order.c_bpartner_id=c_bpartner.c_bpartner_id
+left join c_bpartner_location on c_order.c_bpartner_location_id=c_bpartner_location.c_bpartner_location_id
+left join c_project on c_order.c_project_id=c_project.c_project_id
+where c_order.issotrx='N' and em_dtpo_orderscenario='TYPE2' and c_order.c_order_id=$P{C_Order_ID}
+ limit 1]]>
+	</queryString>
+	<field name="ad_org_id" class="java.lang.String"/>
+	<field name="org" class="java.lang.String"/>
+	<field name="bpartner" class="java.lang.String"/>
+	<field name="location" class="java.lang.String"/>
+	<field name="project" class="java.lang.String"/>
+	<field name="doc" class="java.lang.String"/>
+	<field name="orderdate" class="java.sql.Timestamp"/>
+	<field name="paydesc" class="java.lang.String"/>
+	<field name="docstatus" class="java.lang.String"/>
+	<field name="scenario" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="198" splitType="Stretch">
+			<staticText>
+				<reportElement x="78" y="27" width="367" height="35"/>
+				<textElement>
+					<font size="18" isBold="true"/>
+				</textElement>
+				<text><![CDATA[ Purchase Order :Scenario 2]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="154" y="76" width="7" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="415" y="96" width="100" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[OrderDate]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="78" y="76" width="75" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[Organizatin ]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="167" y="116" width="241" height="25" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{location}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="154" y="96" width="7" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<line>
+				<reportElement x="50" y="76" width="707" height="1"/>
+			</line>
+			<staticText>
+				<reportElement x="154" y="116" width="7" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" pattern="dd/MM/yyyy" isBlankWhenNull="true">
+				<reportElement x="526" y="96" width="227" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression class="java.util.Date"><![CDATA[$F{orderdate}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="50" y="186" width="707" height="1"/>
+			</line>
+			<line>
+				<reportElement x="756" y="77" width="1" height="109"/>
+			</line>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="526" y="156" width="227" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{scenario}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="516" y="96" width="7" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="516" y="115" width="7" height="20" isRemoveLineWhenBlank="true" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="166" y="142" width="241" height="33" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{project}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="51" y="75" width="1" height="109"/>
+			</line>
+			<staticText>
+				<reportElement x="516" y="135" width="7" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="78" y="141" width="75" height="34" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[Project]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="526" y="116" width="227" height="20" isRemoveLineWhenBlank="true" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{paydesc}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="167" y="96" width="241" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{bpartner}]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="526" y="136" width="227" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{docstatus}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="415" y="76" width="100" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[Document No]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="516" y="155" width="7" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="415" y="116" width="100" height="20" isRemoveLineWhenBlank="true" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[PaymentDescription]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="78" y="116" width="75" height="25" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[Address]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="154" y="141" width="7" height="34" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="167" y="76" width="241" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{org}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="415" y="156" width="100" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[Order Scenario]]></text>
+			</staticText>
+			<line>
+				<reportElement x="407" y="71" width="1" height="109"/>
+			</line>
+			<staticText>
+				<reportElement x="78" y="96" width="75" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[Vendor]]></text>
+			</staticText>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="526" y="76" width="227" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{doc}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="516" y="77" width="7" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="415" y="136" width="100" height="20" isPrintWhenDetailOverflows="true"/>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<text><![CDATA[Document Status]]></text>
+			</staticText>
+			<image>
+				<reportElement x="471" y="25" width="268" height="37"/>
+				<imageExpression class="java.awt.Image"><![CDATA[org.openbravo.erpCommon.utility.Utility.showImageLogo("yourcompanylegal", $F{ad_org_id})]]></imageExpression>
+			</image>
+		</band>
+	</title>
+	<pageHeader>
+		<band splitType="Stretch"/>
+	</pageHeader>
+	<columnHeader>
+		<band splitType="Stretch"/>
+	</columnHeader>
+	<detail>
+		<band height="125" splitType="Stretch">
+			<componentElement>
+				<reportElement key="table" style="table" x="0" y="22" width="589" height="53" isPrintWhenDetailOverflows="true"/>
+				<jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+					<datasetRun subDataset="New Dataset 1">
+						<datasetParameter name="C_Order_ID">
+							<datasetParameterExpression><![CDATA[$P{C_Order_ID}]]></datasetParameterExpression>
+						</datasetParameter>
+						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+					</datasetRun>
+					<jr:column width="14">
+						<jr:tableFooter height="174" rowSpan="1"/>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="14" height="38" isPrintWhenDetailOverflows="true" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Sr. No]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:columnFooter height="0" rowSpan="1"/>
+						<jr:detailCell height="47" rowSpan="1">
+							<textField>
+								<reportElement x="0" y="0" width="14" height="47"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8"/>
+								</textElement>
+								<textFieldExpression class="java.lang.Integer"><![CDATA[$V{AUTO_COUNT}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="47">
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="47" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Item range Code]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="47" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$F{item}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="74">
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="74" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Description]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="74" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$F{description}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="24">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="21" width="24" height="30"/>
+								<textElement textAlignment="Right">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="24" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Area]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="24" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$F{area}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="33">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="21" width="33" height="30"/>
+								<textElement>
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[UNIQUE]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="33" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Make]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="33" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$F{make}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="45">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="21" width="45" height="30"/>
+								<textElement>
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[IDENTIFIRE]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="45" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[   Model No/             Product Code]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="45" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$F{model}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="30">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="21" width="30" height="30"/>
+								<textElement>
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="30" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[   Tag/                                Item No]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="30" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$F{itemno}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="27">
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="27" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[ITC HS Code]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="27" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$F{hscode}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="38">
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="38" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Coutry Of Origin]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="38" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$F{country}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="33">
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="32" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Port Of Loading]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="32" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$F{port}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="24">
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="24" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[UOM]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="24" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.lang.String"><![CDATA[$F{uom}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="22">
+						<jr:tableFooter height="174" rowSpan="1"/>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="22" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[QTY]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="22" height="47" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{qty}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="27">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="0" width="27" height="52"/>
+								<box>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement/>
+								<text><![CDATA[]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="27" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Basic Rate]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="27" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{basic}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="28">
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="28" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Excise]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="28" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{excise}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="57">
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="57" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Sub Total(Basic+Excise)]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="57" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{subtotal}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="37">
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="36" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[VAT /CST on Sub Total]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="37" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{vatcst}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="29">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="0" width="29" height="52"/>
+								<textElement/>
+								<text><![CDATA[]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="29" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font isBold="true"/>
+								</textElement>
+								<text><![CDATA[Octroi/LBT]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="29" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{lbt}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="41">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="0" width="41" height="52"/>
+								<textElement textAlignment="Right"/>
+								<text><![CDATA[RATE( c]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="41" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font isBold="true"/>
+								</textElement>
+								<text><![CDATA[Insurance]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="41" height="47" isPrintWhenDetailOverflows="true"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{insurance}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="32">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="0" width="32" height="26"/>
+								<textElement/>
+								<text><![CDATA[an be ]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="26" width="32" height="26"/>
+								<textElement textAlignment="Right"/>
+								<text><![CDATA[(Local]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="32" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Freight]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="32" height="47" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{freight}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="44">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="0" width="44" height="26"/>
+								<textElement/>
+								<text><![CDATA[entered d]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="26" width="44" height="26"/>
+								<textElement textAlignment="Right"/>
+								<text><![CDATA[Supply R]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="44" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.25"/>
+									<topPen lineWidth="0.25"/>
+									<leftPen lineWidth="0.25"/>
+									<bottomPen lineWidth="0.25"/>
+									<rightPen lineWidth="0.25"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Packing/  Forwarding]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="44" height="47" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{packing}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="27">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="0" width="27" height="26"/>
+								<textElement/>
+								<text><![CDATA[irectly]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="26" width="27" height="26"/>
+								<textElement/>
+								<text><![CDATA[ate)]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:tableFooter height="174" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="0" width="27" height="29"/>
+								<textElement verticalAlignment="Middle"/>
+								<text><![CDATA[Total]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="29" width="27" height="29"/>
+								<textElement verticalAlignment="Middle"/>
+								<text><![CDATA[Total]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="58" width="27" height="29"/>
+								<textElement verticalAlignment="Middle"/>
+								<text><![CDATA[Total]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="87" width="27" height="29"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font isBold="false"/>
+								</textElement>
+								<text><![CDATA[Insur]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="116" width="27" height="29"/>
+								<textElement verticalAlignment="Middle"/>
+								<text><![CDATA[Other]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="145" width="27" height="29"/>
+								<textElement verticalAlignment="Middle">
+									<font isBold="true"/>
+								</textElement>
+								<text><![CDATA[Gran]]></text>
+							</staticText>
+						</jr:tableFooter>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="27" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Other]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:columnFooter height="0" rowSpan="1"/>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="27" height="47" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{other}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="44">
+						<jr:tableHeader height="52" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="0" width="43" height="52"/>
+								<textElement/>
+								<text><![CDATA[)]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:tableFooter height="174" rowSpan="1">
+							<staticText>
+								<reportElement x="0" y="0" width="44" height="29"/>
+								<textElement verticalAlignment="Middle"/>
+								<text><![CDATA[Basic     :]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="29" width="44" height="29"/>
+								<textElement verticalAlignment="Middle"/>
+								<text><![CDATA[Vat/Cst  :]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="58" width="44" height="29"/>
+								<textElement verticalAlignment="Middle"/>
+								<text><![CDATA[Packing :]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="87" width="44" height="29"/>
+								<textElement verticalAlignment="Middle">
+									<font isBold="false"/>
+								</textElement>
+								<text><![CDATA[ance     :]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="116" width="44" height="29"/>
+								<textElement textAlignment="Right" verticalAlignment="Middle">
+									<font isBold="true"/>
+								</textElement>
+								<text><![CDATA[            :]]></text>
+							</staticText>
+							<staticText>
+								<reportElement x="0" y="145" width="44" height="29"/>
+								<textElement verticalAlignment="Middle">
+									<font isBold="true"/>
+								</textElement>
+								<text><![CDATA[d Total  :]]></text>
+							</staticText>
+						</jr:tableFooter>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="43" height="38" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Supply Rate Total]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:columnFooter height="0" rowSpan="1"/>
+						<jr:detailCell style="table_TD" height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="44" height="47" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{suppltotal}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="39">
+						<jr:tableHeader height="52" rowSpan="1"/>
+						<jr:tableFooter height="174" rowSpan="1">
+							<textField isStretchWithOverflow="true" pattern="###0.00" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="39" height="29" isPrintWhenDetailOverflows="true"/>
+								<textElement verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Total_Basic}]]></textFieldExpression>
+							</textField>
+							<textField isStretchWithOverflow="true" pattern="###0.00" isBlankWhenNull="true">
+								<reportElement x="0" y="29" width="39" height="29" isPrintWhenDetailOverflows="true"/>
+								<textElement verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Total_VatCst}]]></textFieldExpression>
+							</textField>
+							<textField isStretchWithOverflow="true" pattern="###0.00" isBlankWhenNull="true">
+								<reportElement x="0" y="58" width="39" height="29" isPrintWhenDetailOverflows="true"/>
+								<textElement verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{TotalPkg}]]></textFieldExpression>
+							</textField>
+							<textField isStretchWithOverflow="true" pattern="###0.00" isBlankWhenNull="true">
+								<reportElement x="0" y="87" width="39" height="29" isPrintWhenDetailOverflows="true"/>
+								<textElement verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Total_Insurance}]]></textFieldExpression>
+							</textField>
+							<textField isStretchWithOverflow="true" pattern="###0.00" isBlankWhenNull="true">
+								<reportElement x="0" y="116" width="39" height="29" isPrintWhenDetailOverflows="true"/>
+								<textElement verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Total_Other}]]></textFieldExpression>
+							</textField>
+							<textField isStretchWithOverflow="true" pattern="###0.00" isBlankWhenNull="true">
+								<reportElement x="0" y="145" width="39" height="29" isPrintWhenDetailOverflows="true"/>
+								<textElement verticalAlignment="Middle"/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Grandtotal}]]></textFieldExpression>
+							</textField>
+						</jr:tableFooter>
+						<jr:columnHeader height="38" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="39" height="38" isPrintWhenDetailOverflows="true" forecolor="#FFFFFF" backcolor="#666666"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Amount]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:columnFooter height="0" rowSpan="1"/>
+						<jr:detailCell height="47" rowSpan="1">
+							<textField isStretchWithOverflow="true" pattern="###0.00" isBlankWhenNull="true">
+								<reportElement x="0" y="0" width="39" height="47" isPrintWhenDetailOverflows="true"/>
+								<box>
+									<pen lineWidth="0.5"/>
+									<topPen lineWidth="0.5"/>
+									<leftPen lineWidth="0.5"/>
+									<bottomPen lineWidth="0.5"/>
+									<rightPen lineWidth="0.5"/>
+								</box>
+								<textElement verticalAlignment="Middle">
+									<font size="9"/>
+								</textElement>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{amt}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+				</jr:table>
+			</componentElement>
+		</band>
+	</detail>
+	<columnFooter>
+		<band splitType="Stretch"/>
+	</columnFooter>
+	<pageFooter>
+		<band splitType="Stretch"/>
+	</pageFooter>
+	<summary>
+		<band height="42" splitType="Stretch"/>
+	</summary>
+</jasperReport>

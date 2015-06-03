@@ -1,0 +1,240 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTPO_CERTIFIEDCOPAMOUNT">
+    <function name="DTPO_CERTIFIEDCOPAMOUNT" type="NULL">
+      <parameter name="pinstance_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[-- Parameter
+  TYPE RECORD IS REF CURSOR;
+      v_exsisting_amt VARCHAR(255);
+      v_bpcount NUMBER:=0;
+      v_wocount NUMBER:=0;
+      v_exsistingamt NUMBER:=0;
+      v_subtaskname varchar(60);
+      v_powodocumentno varchar(60);
+v_bpartnername varchar(60);
+v_exsisting_bpartner varchar(60):='--';
+    v_Record_ID VARCHAR(32); 
+    v_grandtotal NUMBER;
+    Cur_Parameter RECORD;
+    CurSetInstance RECORD;
+    v_status VARCHAR(6); 
+    v_ResultStr VARCHAR(300) ;
+    v_sumQtyOrderline NUMBER;
+    v_sumQtyReqOrderLine NUMBER;
+    v_diffqty NUMBER;
+    v_USER VARCHAR(32); 
+    V_message VARCHAR(300) :='';
+    v_Result NUMBER:=1;
+    v_workStatus varchar(6);
+    v_cummulative_amt NUMBER;
+    v_documentno varchar(30);
+         v_em_epb_mainsection_id varchar(32);
+        v_row_id varchar(32);
+v_totallines NUMBER(10,2);
+v_projectID varchar(32);
+v_subsection varchar(100);
+v_dataexsists varchar(60);
+v_count NUMBER;
+v_remarks text;
+v_existingCOP NUMBER(14,2);
+v_itemcode character varying(20);
+v_OrderItemCode character varying(20);
+v_formattedLength NUMBER:=0;
+v_itemCodeRow NUMBER:=0;
+v_7DigitCode character varying(10);
+v_7DigitCodeRow NUMBER:=0;
+v_7DigitTotalCOP NUMBER:=0;
+v_5DigitCode character varying(10);
+v_5DigitCodeRow NUMBER:=0;
+v_5DigitTotalCOP NUMBER:=0;
+v_3DigitCode character varying(10);
+v_3DigitCodeRow NUMBER:=0;
+v_3DigitTotalCOP NUMBER:=0;
+v_2DigitCode character varying(10);
+v_2DigitCodeRow NUMBER:=0;
+v_2DigitTotalCOP NUMBER:=0;
+v_9DigitCode character varying(10);
+v_9DigitCodeRow NUMBER:=0;
+v_9DigitTotalCOP NUMBER:=0;
+v_7To9DigitCode character varying(10);
+v_code character varying(10);
+
+v_FinalCodeLength NUMBER:=0;
+Cur_COPItemData record;
+
+       BEGIN
+    --  Update AD_PInstance
+    --  DBMS_OUTPUT.PUT_LINE('Updating PInstance - Processing');
+    --RAISE_APPLICATION_ERROR(-20000, 'procedur calling');
+    v_ResultStr:='PInstanceNotFound';
+    AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'Y', NULL, NULL) ;
+  BEGIN --BODY
+    -- Get Parameters
+    v_ResultStr:='ReadingParameters';
+    FOR Cur_Parameter IN
+      (SELECT i.Record_ID,
+        p.ParameterName,
+        p.P_String,
+        p.P_Number,
+        p.P_Date,
+        i.createdBy
+      FROM AD_PInstance i
+      LEFT JOIN AD_PInstance_Para p
+        ON i.AD_PInstance_ID=p.AD_PInstance_ID
+      WHERE i.AD_PInstance_ID=PInstance_ID
+      ORDER BY p.SeqNo
+      )
+    LOOP
+     
+            v_Record_ID := Cur_Parameter.Record_ID;
+         --raise exception '%','order id '||v_Record_ID;
+    end loop;
+    
+    BEGIN
+        AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 1, NULL);
+
+      FOR Cur_COPItemData in (select distinct sum(dtpo_itemcop.copamt) as copamt,c_order.c_project_id,dtpo_itemcop.searchkey,c_order.documentno from c_order 
+      left join dtpo_pocopfile on c_order.c_order_id=dtpo_pocopfile.c_order_id 
+      left join dtpo_itemcop on dtpo_itemcop.dtpo_pocopfile_id=dtpo_pocopfile.dtpo_pocopfile_id 
+      where dtpo_pocopfile.dtpo_pocopfile_id=v_Record_ID group by c_order.c_project_id,dtpo_itemcop.searchkey,c_order.documentno
+      ) LOOP
+
+        select trim( both '.0' from Cur_COPItemData.searchkey::text) into v_itemcode;
+select character_length(v_itemcode::text) into v_formattedLength;
+IF(v_formattedLength::numeric = 2 or v_formattedLength::numeric = 4 or v_formattedLength::numeric = 6 or v_formattedLength::numeric = 8) THEN
+        v_OrderItemCode:=v_itemcode||0;
+ELSE
+v_OrderItemCode:=v_itemcode;
+END IF; 
+      
+        select character_length(v_OrderItemCode::text) into v_FinalCodeLength;
+
+IF(v_FinalCodeLength::numeric = 9) THEN 
+select rowid into v_itemCodeRow from dtzk_ssinformation where data like v_OrderItemCode||'/'||Cur_COPItemData.documentno and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+Update dtzk_ssinformation set data=Cur_COPItemData.copamt where rowid=v_itemCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=cur_copitemdata.c_project_id;
+
+select sum(dtpo_itemcop.grnquantity) into v_9DigitTotalCOP from dtpo_itemcop where searchkey = v_OrderItemCode and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_9DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_OrderItemCode::text or data = v_OrderItemCode::text||'.'||0);
+Update dtzk_ssinformation set data=v_9DigitTotalCOP where rowid=v_9DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+select substring(v_OrderItemCode::text from 1 for 7) into v_7DigitCode;
+select sum(dtpo_itemcop.grnquantity) into v_7DigitTotalCOP from dtpo_itemcop where searchkey like v_7DigitCode||'%' and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_7DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_7DigitCode::text or data = v_7DigitCode::text||'.'||0);
+Update dtzk_ssinformation set data=v_7DigitTotalCOP where rowid=v_7DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+select sum(dtpo_itemcop.grnquantity) into v_5DigitTotalCOP from dtpo_itemcop where searchkey like v_5DigitCode||'%' and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_5DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_5DigitCode::text or data = v_5DigitCode::text||'.'||0);
+Update dtzk_ssinformation set data=v_5DigitTotalCOP where rowid=v_5DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select sum(dtpo_itemcop.grnquantity) into v_3DigitTotalCOP from dtpo_itemcop where searchkey like v_3DigitCode||'%' and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_3DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_3DigitCode::text or data = v_3DigitCode::text||'.'||0);
+Update dtzk_ssinformation set data=v_3DigitTotalCOP where rowid=v_3DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select sum(dtpo_itemcop.grnquantity) into v_2DigitTotalCOP from dtpo_itemcop where searchkey like v_2DigitCode||'%' and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_2DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_2DigitCode::text or data = v_2DigitCode::text||'.'||0);
+Update dtzk_ssinformation set data=v_2DigitTotalCOP where rowid=v_2DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+update dtpo_pocopfile set copstatus='AP' where dtpo_pocopfile_id=v_Record_ID;  
+
+ELSIF(v_FinalCodeLength::numeric = 7) THEN
+
+v_code:=v_OrderItemCode||'00'; 
+select rowid into v_itemCodeRow from dtzk_ssinformation where data like v_OrderItemCode||'/'||Cur_COPItemData.documentno and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+Update dtzk_ssinformation set data=Cur_COPItemData.copamt where rowid=v_itemCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=cur_copitemdata.c_project_id;
+
+select trunc(sum(dtpo_itemcop.grnquantity),2) into v_7DigitTotalCOP from dtpo_itemcop where searchkey = v_code and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_7DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_OrderItemCode::text or data = v_OrderItemCode::text||'.'||0);
+Update dtzk_ssinformation set data=v_7DigitTotalCOP where rowid=v_7DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+select substring(v_OrderItemCode::text from 1 for 5) into v_5DigitCode;
+select trunc(sum(dtpo_itemcop.grnquantity),2) into v_5DigitTotalCOP from dtpo_itemcop where searchkey like v_5DigitCode||'%' and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_5DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_5DigitCode::text or data = v_5DigitCode::text||'.'||0);
+Update dtzk_ssinformation set data=v_5DigitTotalCOP where rowid=v_5DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select trunc(sum(dtpo_itemcop.grnquantity),2) into v_3DigitTotalCOP from dtpo_itemcop where searchkey like v_3DigitCode||'%' and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_3DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_3DigitCode::text or data = v_3DigitCode::text||'.'||0);
+Update dtzk_ssinformation set data=v_3DigitTotalCOP where rowid=v_3DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select trunc(sum(dtpo_itemcop.grnquantity),2) into v_2DigitTotalCOP from dtpo_itemcop where searchkey like v_2DigitCode||'%' and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_2DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_2DigitCode::text or data = v_2DigitCode::text||'.'||0);
+Update dtzk_ssinformation set data=v_2DigitTotalCOP where rowid=v_2DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+update dtpo_pocopfile set copstatus='AP' where dtpo_pocopfile_id=v_Record_ID;  
+ELSIF(v_FinalCodeLength::numeric = 5) THEN
+
+--raise exception '%','v_FinalCodeLength '||v_FinalCodeLength;
+v_code:=v_OrderItemCode||'0000'; 
+
+select rowid into v_itemCodeRow from dtzk_ssinformation where data like v_OrderItemCode||'/'||Cur_COPItemData.documentno and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+Update dtzk_ssinformation set data=Cur_COPItemData.copamt where rowid=v_itemCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=cur_copitemdata.c_project_id;
+
+--raise exception '%','c_project_id '||Cur_COPItemData.c_project_id||'v_code'||v_code;
+select coalesce(sum(dtpo_itemcop.grnquantity),0) into v_5DigitTotalCOP from dtpo_itemcop where searchkey = v_code and c_project_id=Cur_COPItemData.c_project_id;
+--raise exception '%','v_5DigitTotalCOP '||v_5DigitTotalCOP||'v_code'||v_code;
+
+
+select rowid into v_5DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and
+ (data = v_OrderItemCode or data = v_OrderItemCode||'.'||0);
+
+ --raise exception '%','v_5DigitTotalCOP '||v_5DigitTotalCOP||'v_5DigitCodeRow'||v_5DigitCodeRow;
+Update dtzk_ssinformation set data=v_5DigitTotalCOP where rowid=v_5DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+select substring(v_OrderItemCode::text from 1 for 3) into v_3DigitCode;
+select trunc(sum(dtpo_itemcop.grnquantity),2) into v_3DigitTotalCOP from dtpo_itemcop where searchkey like v_3DigitCode::text||'%' and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_3DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_3DigitCode or data = v_3DigitCode||'.'||0);
+Update dtzk_ssinformation set data=v_3DigitTotalCOP where rowid=v_3DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select trunc(sum(dtpo_itemcop.grnquantity),2) into v_2DigitTotalCOP from dtpo_itemcop where searchkey like v_2DigitCode::text||'%' and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_2DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_2DigitCode or data = v_2DigitCode||'.'||0);
+Update dtzk_ssinformation set data=v_2DigitTotalCOP where rowid=v_2DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+update dtpo_pocopfile set copstatus='AP' where dtpo_pocopfile_id=v_Record_ID;  
+ELSIF(v_FinalCodeLength::numeric = 3)THEN
+v_code:=v_OrderItemCode||'000000'; 
+select rowid into v_itemCodeRow from dtzk_ssinformation where data like v_OrderItemCode||'/'||Cur_COPItemData.documentno and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+Update dtzk_ssinformation set data=Cur_COPItemData.copamt where rowid=v_itemCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=cur_copitemdata.c_project_id;
+
+select sum(dtpo_itemcop.grnquantity) into v_3DigitTotalCOP from dtpo_itemcop where searchkey = v_code and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_3DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_OrderItemCode or data = v_OrderItemCode||'.'||0);
+Update dtzk_ssinformation set data=v_3DigitTotalCOP where rowid=v_3DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+select substring(v_OrderItemCode::text from 1 for 2) into v_2DigitCode;
+select sum(dtpo_itemcop.grnquantity) into v_2DigitTotalCOP from dtpo_itemcop where searchkey like v_2DigitCode||'%' and c_project_id=Cur_COPItemData.c_project_id;
+select rowid into v_2DigitCodeRow from dtzk_ssinformation where dtzk_ssinformation_id=Cur_COPItemData.c_project_id and (data = v_2DigitCode or data = v_2DigitCode||'.'||0);
+Update dtzk_ssinformation set data=v_2DigitTotalCOP where rowid=v_2DigitCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+update dtpo_pocopfile set copstatus='AP' where dtpo_pocopfile_id=v_Record_ID; 
+ELSE
+select rowid into v_itemCodeRow from dtzk_ssinformation where data like v_OrderItemCode||'/'||Cur_COPItemData.documentno and dtzk_ssinformation_id=Cur_COPItemData.c_project_id;
+
+Update dtzk_ssinformation set data=Cur_COPItemData.copamt where rowid=v_itemCodeRow::numeric and columnid='8' and dtzk_ssinformation_id=cur_copitemdata.c_project_id;
+update dtpo_pocopfile set copstatus='AP' where dtpo_pocopfile_id=v_Record_ID; 
+END IF; 
+
+ END LOOP;
+
+  END; --BODY
+EXCEPTION
+WHEN OTHERS THEN
+   v_ResultStr:= '@ERROR=' || SQLERRM;
+
+
+  
+  AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', v_Result, v_ResultStr);
+ END;
+  --RETURN;
+END DTPO_CERTIFIEDCOPAMOUNT
+]]></body>
+    </function>
+  </database>

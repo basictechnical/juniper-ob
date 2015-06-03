@@ -1,0 +1,130 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTPO_SYNCHRONISEPOAMT">
+    <function name="DTPO_SYNCHRONISEPOAMT" type="NULL">
+      <parameter name="pinstance_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[-- Parameter
+  TYPE RECORD IS REF CURSOR;
+      v_exsisting_amt VARCHAR(255);
+      v_bpcount NUMBER:=0;
+      v_wocount NUMBER:=0;
+      v_exsistingamt NUMBER:=0;
+      v_subtaskname varchar(60);
+      v_powodocumentno varchar(60);
+v_bpartnername varchar(60);
+v_exsisting_bpartner varchar(60):='--';
+    v_Record_ID VARCHAR(32); 
+    v_grandtotal NUMBER;
+    Cur_Parameter RECORD;
+    CurSetInstance RECORD;
+    v_status VARCHAR(6); 
+    v_ResultStr VARCHAR(300) ;
+    v_sumQtyOrderline NUMBER;
+    v_sumQtyReqOrderLine NUMBER;
+    v_diffqty NUMBER;
+    v_USER VARCHAR(32); 
+    V_message VARCHAR(300) :='';
+    v_Result NUMBER:=1;
+    v_workStatus varchar(6);
+    v_cummulative_amt NUMBER;
+    v_documentno varchar(30);
+         v_em_epb_mainsection_id varchar(32);
+        v_row_id varchar(32);
+v_totallines NUMBER(10,2);
+v_projectID varchar(32);
+v_subsection varchar(100);
+v_dataexsists varchar(60);
+v_count NUMBER;
+v_remarks text;
+       BEGIN
+    --  Update AD_PInstance
+    --  DBMS_OUTPUT.PUT_LINE('Updating PInstance - Processing');
+    --RAISE_APPLICATION_ERROR(-20000, 'procedur calling');
+    v_ResultStr:='PInstanceNotFound';
+    AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'Y', NULL, NULL) ;
+  BEGIN --BODY
+    -- Get Parameters
+    v_ResultStr:='ReadingParameters';
+    FOR Cur_Parameter IN
+      (SELECT i.Record_ID,
+        p.ParameterName,
+        p.P_String,
+        p.P_Number,
+        p.P_Date,
+        i.createdBy
+      FROM AD_PInstance i
+      LEFT JOIN AD_PInstance_Para p
+        ON i.AD_PInstance_ID=p.AD_PInstance_ID
+      WHERE i.AD_PInstance_ID=PInstance_ID
+      ORDER BY p.SeqNo
+      )
+    LOOP
+     
+            v_Record_ID := Cur_Parameter.Record_ID;
+         --   raise exception '%','order id '||v_Record_ID;
+    end loop;
+    
+    BEGIN
+        AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 1, NULL);
+  
+     
+   select dtpo_pocop.copvalue,c_order.c_project_id,epb_subsection.name ,c_order.documentno,COALESCE(epb_subtasks.name,'--'),c_bpartner.name
+   into v_totallines,v_projectID,v_subsection,v_documentno ,v_subtaskname,v_bpartnername from c_order 
+  left join c_orderline on c_order.c_order_id=c_orderline.c_order_id 
+  left join dtpo_pocop on dtpo_pocop.c_orderline_id=c_orderline.c_orderline_id 
+  left join epb_subsection on epb_subsection.epb_subsection_id = c_order.em_epb_subsection_id
+  left join epb_subtasks on epb_subtasks.epb_subtasks_id = c_order.em_epb_subtasks_id
+  left join c_bpartner on c_bpartner.c_bpartner_id=c_order.c_bpartner_id
+   where dtpo_pocop_id=v_Record_ID;
+           --     raise exception '%','v_documentno'||v_documentno;
+
+        --select rowid into v_row_id from dtzk_ssinformation where data like v_subtaskname;
+
+       --select  count(*) into v_exsistingamt  from dtzk_ssinformation where rowid=v_row_id and columnid='7' ;
+
+               
+      /*         IF(v_subtaskname LIKE '--') THEN
+			select rowid into v_row_id from dtzk_ssinformation where data like v_subsection and dtzk_ssinformation_id=v_projectID;
+
+	--  raise exception '%','v_row_id'||v_row_id;
+	ELSE
+		select rowid into v_row_id from dtzk_ssinformation where data like v_subtaskname and dtzk_ssinformation_id=v_projectID;
+			--  raise exception '%','v_row_id'||v_row_id;
+
+
+	END IF;*/
+	select rowid into v_row_id from dtzk_ssinformation where data like v_documentno and dtzk_ssinformation_id=v_projectID;
+			-- raise exception '%','v_row_id'||v_row_id;
+
+	select data into v_dataexsists from dtzk_ssinformation where rowid=v_row_id::numeric and columnid='8' and dtzk_ssinformation_id=v_projectID; 
+
+	 IF ( v_dataexsists = '') THEN
+			Update dtzk_ssinformation set data=v_totallines where rowid=v_row_id::numeric and columnid='8' and dtzk_ssinformation_id=v_projectID;
+	else
+		select data INTO v_exsisting_amt from dtzk_ssinformation where rowid=v_row_id::numeric and columnid='8'and dtzk_ssinformation_id=v_projectID;
+					--raise exception '%','test'||v_exsisting_amt;
+			v_cummulative_amt:=(v_totallines+v_exsisting_amt::numeric);
+			--  raise exception '%','test'||v_cummulative_amt;
+			Update dtzk_ssinformation set data=v_cummulative_amt where rowid=v_row_id::numeric and columnid='8' and dtzk_ssinformation_id=v_projectID;
+	END IF;
+
+	 
+ 
+
+   --RETURN;
+
+  END; --BODY
+EXCEPTION
+WHEN OTHERS THEN
+   v_ResultStr:= '@ERROR=' || SQLERRM;
+
+
+  
+  AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', v_Result, v_ResultStr);
+ END;
+  --RETURN;
+END DTPO_SYNCHRONISEPOAMT
+]]></body>
+    </function>
+  </database>

@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="report name" pageWidth="595" pageHeight="842" columnWidth="535" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<style name="Crosstab Data Text" hAlign="Center"/>
+	<queryString>
+		<![CDATA[SELECT	VNDR.name		AS "SupplierNAME",
+	QUOT.Product		AS "Product",
+	QUOT.qtyordered		AS "Qty",
+	PROP.priceactual	AS "QuotedPrice"
+FROM	c_orderline	PROP
+JOIN	(
+SELECT	ORDR.documentno,
+	LINE.c_orderline_id,
+	LINE.ref_orderline_id,
+	PROD.name		Product,
+	LINE.qtyordered,
+	LINE.line
+FROM	c_order 	ORDR
+JOIN	c_orderline 	LINE ON ORDR.c_order_id = LINE.c_order_id
+JOIN	m_product 	PROD ON LINE.m_product_id = PROD.m_product_id
+WHERE	ORDR.documentno = '3023/RFQ-1/A1'
+AND	ORDR.processed = 'Y'
+	) QUOT ON PROP.ref_orderline_id = QUOT.c_orderline_id
+JOIN	c_order 	ORDR ON PROP.c_order_id = ORDR.c_order_id
+JOIN	c_bpartner	VNDR ON PROP.c_bpartner_id = VNDR.c_bpartner_id
+WHERE	ORDR.processed = 'Y'
+ORDER BY ORDR.documentno,QUOT.line]]>
+	</queryString>
+	<field name="SupplierNAME" class="java.lang.String"/>
+	<field name="Product" class="java.lang.String"/>
+	<field name="Qty" class="java.math.BigDecimal"/>
+	<field name="QuotedPrice" class="java.math.BigDecimal"/>
+	<variable name="QuotedPrice_1" class="java.math.BigDecimal" calculation="Lowest">
+		<variableExpression><![CDATA[$F{QuotedPrice}]]></variableExpression>
+	</variable>
+	<variable name="QuotedPrice_2" class="java.math.BigDecimal" calculation="Lowest">
+		<variableExpression><![CDATA[$F{QuotedPrice}]]></variableExpression>
+	</variable>
+	<variable name="QuotedPrice_3" class="java.math.BigDecimal" calculation="Lowest">
+		<variableExpression><![CDATA[$F{QuotedPrice}]]></variableExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="49" splitType="Stretch">
+			<staticText>
+				<reportElement mode="Opaque" x="0" y="0" width="555" height="20" backcolor="#86E193"/>
+				<textElement textAlignment="Center">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Quotation Proposal Analysis Report]]></text>
+			</staticText>
+			<textField pattern="MMMMM dd, yyyy">
+				<reportElement x="271" y="26" width="284" height="20"/>
+				<textElement textAlignment="Right">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Report Generated on:" + new java.util.Date().toString()]]></textFieldExpression>
+			</textField>
+		</band>
+	</title>
+	<pageHeader>
+		<band splitType="Stretch"/>
+	</pageHeader>
+	<columnHeader>
+		<band splitType="Stretch"/>
+	</columnHeader>
+	<detail>
+		<band splitType="Stretch"/>
+	</detail>
+	<columnFooter>
+		<band splitType="Stretch"/>
+	</columnFooter>
+	<pageFooter>
+		<band splitType="Stretch"/>
+	</pageFooter>
+	<summary>
+		<band height="54" splitType="Stretch">
+			<crosstab>
+				<reportElement x="1" y="0" width="554" height="53"/>
+				<crosstabHeaderCell>
+					<cellContents>
+						<staticText>
+							<reportElement style="Crosstab Data Text" mode="Opaque" x="0" y="15" width="89" height="15" backcolor="#86E294"/>
+							<textElement/>
+							<text><![CDATA[Product Name]]></text>
+						</staticText>
+						<staticText>
+							<reportElement style="Crosstab Data Text" mode="Opaque" x="89" y="15" width="80" height="15" backcolor="#86E294"/>
+							<textElement/>
+							<text><![CDATA[Qty]]></text>
+						</staticText>
+					</cellContents>
+				</crosstabHeaderCell>
+				<rowGroup name="Product" width="89">
+					<bucket>
+						<bucketExpression class="java.lang.String"><![CDATA[$F{Product}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#F0F8FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<textField>
+								<reportElement style="Crosstab Data Text" mode="Transparent" x="0" y="4" width="89" height="15"/>
+								<textElement/>
+								<textFieldExpression class="java.lang.String"><![CDATA[$V{Product}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<rowGroup name="Qty" width="80">
+					<bucket>
+						<bucketExpression class="java.math.BigDecimal"><![CDATA[$F{Qty}]]></bucketExpression>
+					</bucket>
+					<crosstabRowHeader>
+						<cellContents backcolor="#F0F8FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<textField>
+								<reportElement style="Crosstab Data Text" mode="Transparent" x="3" y="4" width="70" height="15"/>
+								<textElement/>
+								<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Qty}]]></textFieldExpression>
+							</textField>
+						</cellContents>
+					</crosstabRowHeader>
+					<crosstabTotalRowHeader>
+						<cellContents/>
+					</crosstabTotalRowHeader>
+				</rowGroup>
+				<columnGroup name="SupplierNAME" height="30">
+					<bucket>
+						<bucketExpression class="java.lang.String"><![CDATA[$F{SupplierNAME}]]></bucketExpression>
+					</bucket>
+					<crosstabColumnHeader>
+						<cellContents backcolor="#F0F8FF" mode="Opaque">
+							<box>
+								<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+							</box>
+							<textField>
+								<reportElement style="Crosstab Data Text" mode="Opaque" x="0" y="0" width="69" height="15" backcolor="#86E294"/>
+								<textElement/>
+								<textFieldExpression class="java.lang.String"><![CDATA[$V{SupplierNAME}]]></textFieldExpression>
+							</textField>
+							<staticText>
+								<reportElement style="Crosstab Data Text" mode="Opaque" x="0" y="15" width="69" height="15" backcolor="#86E294"/>
+								<textElement/>
+								<text><![CDATA[Quoted Price]]></text>
+							</staticText>
+						</cellContents>
+					</crosstabColumnHeader>
+					<crosstabTotalColumnHeader>
+						<cellContents/>
+					</crosstabTotalColumnHeader>
+				</columnGroup>
+				<measure name="QuotedPriceMeasure" class="java.math.BigDecimal" calculation="Lowest">
+					<measureExpression><![CDATA[$F{QuotedPrice}]]></measureExpression>
+				</measure>
+				<crosstabCell width="69" height="21">
+					<cellContents>
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField isBlankWhenNull="true">
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="69" height="21"/>
+							<textElement/>
+							<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{QuotedPriceMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell height="25" rowTotalGroup="Product">
+					<cellContents backcolor="#005FB3" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="50" height="25" forecolor="#FFFFFF"/>
+							<textElement/>
+							<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{QuotedPriceMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell width="50" columnTotalGroup="SupplierNAME">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="50" height="25"/>
+							<textElement/>
+							<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{QuotedPriceMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell rowTotalGroup="Product" columnTotalGroup="SupplierNAME">
+					<cellContents backcolor="#005FB3" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="50" height="25" forecolor="#FFFFFF"/>
+							<textElement/>
+							<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{QuotedPriceMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell height="25" rowTotalGroup="Qty">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="50" height="25"/>
+							<textElement/>
+							<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{QuotedPriceMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+				<crosstabCell rowTotalGroup="Qty" columnTotalGroup="SupplierNAME">
+					<cellContents backcolor="#BFE1FF" mode="Opaque">
+						<box>
+							<pen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						</box>
+						<textField>
+							<reportElement style="Crosstab Data Text" x="0" y="0" width="50" height="25"/>
+							<textElement/>
+							<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{QuotedPriceMeasure}]]></textFieldExpression>
+						</textField>
+					</cellContents>
+				</crosstabCell>
+			</crosstab>
+		</band>
+	</summary>
+</jasperReport>

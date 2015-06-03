@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTZK_UPDATE_CNVRSNPOCOPFILE">
+    <function name="DTZK_UPDATE_CNVRSNPOCOPFILE" type="NUMERIC">
+      <parameter name="p_rev1" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_rev2" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_rev3" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_rev4" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_rev5" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_rev6" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_rev7" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_rev8" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_rev9" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_rev10" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_adv1" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_adv2" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_adv3" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_adv4" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_adv5" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_adv6" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_bookname" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_order_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_total" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_cop" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[/*************************************************************************
+* The contents of this file are subject to the Openbravo  Public  License
+* Version  1.1  (the  "License"),  being   the  Mozilla   Public  License
+* Version 1.1  with a permitted attribution clause; you may not  use this
+* file except in compliance with the License. You  may  obtain  a copy of
+* the License at http://www.openbravo.com/legal/license.html
+* Software distributed under the License  is  distributed  on  an "AS IS"
+* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+* License for the specific  language  governing  rights  and  limitations
+* under the License.
+* The Original Code is Openbravo ERP.
+* The Initial Developer of the Original Code is Openbravo SLU
+* All portions are Copyright (C) 2008-2009 Openbravo SLU
+* All Rights Reserved.
+* Contributor(s):  ______________________________________.
+************************************************************************/      
+
+  v_countschemas INTEGER:=1; 
+  v_parent_id ad_treenode.parent_id%TYPE;
+  v_node_id ad_treenode.parent_id%TYPE;
+  v_clientID varchar(32);
+  v_orgID varchar(32); 
+  cur_org_le RECORD;
+  v_rowid NUMBER;
+  v_data varchar(255);
+  v_columnid NUMBER;
+  v_maindata varchar(255);
+  v_dataexsists NUMBER;
+  v_MData NUMBER;
+  v_SData NUMBER;
+  v_contractamt NUMBER(10,2);
+  v_userID varchar(32);
+  v_count NUMBER:=0;
+  v_contractcopID character varying(32);
+  v_sumcopvalue NUMBER(10,2);
+  v_contractboqfileID  character varying(32);
+  v_getuuid1 character varying(32);
+  v_getuuid2 character varying(32);
+  v_pocopfile_id character varying(32);
+  v_copno character varying(32);
+  v_copdocexsists character varying(60);
+  v_orderline_id NUMBER;
+  v_filetype character varying(60);
+  v_advancetype character varying(60);
+  v_paymenttype character varying(60);
+  cur_grndata record;
+  cur_cummulativedata record;
+  v_copamount NUMBER;
+  vp_itemdesc character varying (255);
+  vp_order_id character varying(32);
+  v_recoverable NUMBER;
+  v_grandTotal NUMBER;
+  v_copTotal NUMBER;
+  v_scenarioType character varying(32);
+  v_tempGrandTotal NUMBER;
+  v_tempCopTotal NUMBER;
+  v_tempTotal NUMBER;
+BEGIN
+
+             select c_order.grandtotal,coalesce(trunc(sum(dtpo_pocopfile.copamount::numeric),0),0),c_order.em_dtpo_orderscenario into v_grandTotal,v_copTotal,v_scenarioType from c_order 
+             join dtpo_pocopfile on  c_order.c_order_id = dtpo_pocopfile.c_order_id where c_order.c_order_id=p_order_id group by c_order.grandtotal,c_order.em_dtpo_orderscenario;
+     --raise exception '%','p_total'||p_total||'v_copTotal'||v_copTotal||'v_grandTotal'||v_grandTotal;
+
+     If(p_total::numeric + v_copTotal <= 0 and v_grandTotal <= 0) Then
+v_tempTotal:=(p_total::numeric + v_copTotal) * (-1);
+v_tempGrandTotal:=v_grandTotal * (-1);
+
+    else
+v_tempTotal:=(p_total::numeric + v_copTotal);
+v_tempGrandTotal:=v_grandTotal;
+
+   End IF;
+
+
+             If(v_scenarioType = 'TYPE1') Then
+  IF(trunc(v_tempTotal,0) > (v_tempGrandTotal + v_tempGrandTotal*0.2)) THEN
+raise exception '%','Certification Amount Exceeded From Order Amount';
+                  ElSE
+                     update dtpo_pocopfile set rec_1stcolumn=p_rev1,rec_2ndcolumn=p_rev2,rec_3rdcolumn=p_rev3,rec_4thcolumn=p_rev4,rec_5thcolumn=p_rev5,
+     rec_6thcolumn=p_rev6,rec_7thcolumn=p_rev7,rec_8thcolumn=p_rev8,rec_9thcolumn=p_rev9,rec_10thcolumn=p_rev10,
+     adv_1stcolumn=p_adv1,adv_2ndcolumn=p_adv2,adv_3rdcolumn=p_adv3,adv_4thcolumn=p_adv4,adv_5thcolumn=p_adv5,adv_6thcolumn=p_adv6,copamount=p_total,usdamt=p_cop,
+     em_jcm_recoverytotal =(p_rev1+p_rev2 +p_rev3 + p_rev4+p_rev5+p_rev6 +p_rev7 +p_rev8 +p_rev9 +p_rev10),
+     em_jcm_advancetotal=(p_adv1 + p_adv2 + p_adv3 +p_adv4 + p_adv5 +  p_adv6),
+     em_jcm_nettotal = p_total +((p_rev1+p_rev2 +p_rev3 + p_rev4+p_rev5+p_rev6 +p_rev7 +p_rev8 +p_rev9 +p_rev10) * (p_total/p_cop)) -((p_adv1 + p_adv2 + p_adv3 +p_adv4 + p_adv5 +  p_adv6) * (p_total/p_cop)),
+     conversionrate = (p_total/p_cop) where filename=p_bookname and c_order_id=p_order_id;
+
+  END IF;
+             
+     ELSE 
+--raise exception '%','v_tempTotal'||v_tempTotal||'v_tempGrandTotal'||v_tempGrandTotal;
+IF(trunc(v_tempTotal,0) > v_tempGrandTotal) THEN
+raise exception '%','Certification Amount Exceeded From Order Amount';
+ElSE
+update dtpo_pocopfile set rec_1stcolumn=p_rev1,rec_2ndcolumn=p_rev2,rec_3rdcolumn=p_rev3,rec_4thcolumn=p_rev4,rec_5thcolumn=p_rev5,
+rec_6thcolumn=p_rev6,rec_7thcolumn=p_rev7,rec_8thcolumn=p_rev8,rec_9thcolumn=p_rev9,rec_10thcolumn=p_rev10,
+adv_1stcolumn=p_adv1,adv_2ndcolumn=p_adv2,adv_3rdcolumn=p_adv3,adv_4thcolumn=p_adv4,adv_5thcolumn=p_adv5,adv_6thcolumn=p_adv6,copamount=p_total,
+em_jcm_recoverytotal =(p_rev1+p_rev2 +p_rev3 + p_rev4+p_rev5+p_rev6 +p_rev7 +p_rev8 +p_rev9 +p_rev10),
+em_jcm_advancetotal=(p_adv1 + p_adv2 + p_adv3 +p_adv4 + p_adv5 +  p_adv6),
+        em_jcm_nettotal = p_total +(p_rev1+p_rev2 +p_rev3 + p_rev4+p_rev5+p_rev6 +p_rev7 +p_rev8 +p_rev9 +p_rev10)-(p_adv1 + p_adv2 + p_adv3 +p_adv4 + p_adv5 +  p_adv6)
+where filename=p_bookname and c_order_id=p_order_id;
+
+             END IF;
+END IF;
+                        return 1;
+END DTZK_UPDATE_CNVRSNPOCOPFILE
+]]></body>
+    </function>
+  </database>

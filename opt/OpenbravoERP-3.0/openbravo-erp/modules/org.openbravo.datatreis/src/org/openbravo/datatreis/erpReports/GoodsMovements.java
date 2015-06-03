@@ -1,0 +1,80 @@
+package org.openbravo.datatreis.erpReports;
+
+import java.io.IOException;
+import java.util.HashMap;
+
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.design.JasperDesign;
+import net.sf.jasperreports.engine.xml.JRXmlLoader;
+
+import org.openbravo.base.secureApp.HttpSecureAppServlet;
+import org.openbravo.base.secureApp.VariablesSecureApp;
+
+public class GoodsMovements extends HttpSecureAppServlet {
+  private static final long serialVersionUID = 1L;
+
+  public void init(ServletConfig config) {
+    super.init(config);
+    boolHist = false;
+  }
+
+  @Override
+public void doGet(HttpServletRequest request, HttpServletResponse response)
+		throws IOException, ServletException {
+	  System.out.println("hi how r ruy doget");
+	super.doGet(request, response);
+}
+
+public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException,
+      ServletException {
+    VariablesSecureApp vars = new VariablesSecureApp(request);
+    System.out.println("hi how r ruy");
+    if (vars.commandIn("DEFAULT")) {
+      String strmInoutId = vars.getSessionValue("GoodsMovements.inpmMovementId_R");
+      if (strmInoutId.equals(""))
+            System.out.println("empty inoutid"+strmInoutId);
+        strmInoutId = vars.getSessionValue("GoodsMovements.inpmMovementId");
+		System.out.println("empty inoutid222"+strmInoutId);
+      if (log4j.isDebugEnabled())
+        log4j.debug("+***********************: " + strmInoutId);
+      printPagePartePDF(response, vars, strmInoutId);
+    } else
+      pageError(response);
+  }
+
+  private void printPagePartePDF(HttpServletResponse response, VariablesSecureApp vars,
+      String strmInoutId) throws IOException, ServletException {
+    if (log4j.isDebugEnabled())
+      log4j.debug("Output: pdf");
+    String strBaseDesign = getBaseDesignPath(vars.getLanguage());
+    String strOutput = "pdf";
+
+    HashMap<String, Object> parameters = new HashMap<String, Object>();
+    JasperReport jasperReportLines;
+    String reportName = strBaseDesign
+        + "/org/openbravo/datatreis/erpReports/GoodsMovements.jrxml";
+    try {
+      JasperDesign jasperDesignLines = JRXmlLoader.load(reportName);
+      jasperReportLines = JasperCompileManager.compileReport(jasperDesignLines);
+    } catch (JRException e) {
+      e.printStackTrace();
+      throw new ServletException(e.getMessage());
+    }
+
+    System.out.println("MovementId : " + strmInoutId);
+    parameters.put("DOCUMENT_ID", strmInoutId);
+    renderJR(vars, response, reportName, strOutput, parameters, null, null);
+
+  }
+
+  public String getServletInfo() {
+    return "Servlet that presents the RptMRequisitions seeker";
+  } // End of getServletInfo() method
+}

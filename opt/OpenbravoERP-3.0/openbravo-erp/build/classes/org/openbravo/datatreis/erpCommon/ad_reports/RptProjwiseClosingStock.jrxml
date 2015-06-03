@@ -1,0 +1,468 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="report1" pageWidth="792" pageHeight="612" orientation="Landscape" columnWidth="752" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<style name="table">
+		<box>
+			<pen lineWidth="1.0" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table_TH" mode="Opaque" backcolor="#F0F8FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table_CH" mode="Opaque" backcolor="#BFE1FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table_TD" mode="Opaque" backcolor="#FFFFFF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+		<conditionalStyle>
+			<conditionExpression><![CDATA[new Boolean($V{REPORT_COUNT}.intValue()%2==0)]]></conditionExpression>
+			<style backcolor="#EFF7FF"/>
+		</conditionalStyle>
+	</style>
+	<style name="table 1">
+		<box>
+			<pen lineWidth="1.0" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table 1_TH" mode="Opaque" backcolor="#F0F8FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table 1_CH" mode="Opaque" backcolor="#BFE1FF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+	</style>
+	<style name="table 1_TD" mode="Opaque" backcolor="#FFFFFF">
+		<box>
+			<pen lineWidth="0.5" lineColor="#000000"/>
+		</box>
+		<conditionalStyle>
+			<conditionExpression><![CDATA[new Boolean($V{REPORT_COUNT}.intValue()%2==0)]]></conditionExpression>
+			<style backcolor="#EFF7FF"/>
+		</conditionalStyle>
+	</style>
+	<subDataset name="Rpt CS Dataset">
+		<parameter name="C_Project_ID" class="java.lang.String" isForPrompting="false"/>
+		<queryString>
+			<![CDATA[SELECT	ORD.Project,
+	ORD.PONo,
+	ORD.ORDDT,
+	ORD.ORDPRODNAME,
+	ORD.ORDQTY,
+	ORD.PRICE,
+	SRV.SRVNo,
+	SRV.RECDDT,
+	SRV.SRVPRODNAME,
+	SRV.RECDQTY,
+	SIV.SIVNo,
+	SIV.ISSUEDT,
+	SIV.SIVPRODNAME,
+	SIV.ISSUEDQTY
+FROM	(
+SELECT	(proj.value || ' - ' || proj.name)	Project,
+	head.documentno				PONO,
+	TO_CHAR(head.dateordered,'DD-MM-YYYY')	ORDDT,
+	prod.name || COALESCE(asin.description,'')		ORDPRODNAME,
+	line.qtyordered				ORDQTY,
+	line.priceactual			PRICE,
+	line.c_orderline_id
+FROM	c_order			head
+JOIN	c_orderline		line ON head.c_order_id = line.c_order_id
+JOIN	c_project		proj ON head.c_project_id = proj.c_project_id
+JOIN	m_product		prod ON line.m_product_id = prod.m_product_id
+LEFT JOIN	m_attributesetinstance	asin ON line.m_attributesetinstance_id = asin.m_attributesetinstance_id
+WHERE	proj.c_project_id = $P{C_Project_ID}
+AND	head.dateordered BETWEEN COALESCE(proj.startdate, DATE '2010-01-01') AND COALESCE(proj.datecontract,proj.datefinish,CURRENT_DATE)
+AND	head.docstatus NOT IN ('DR','VO')
+AND	head.issotrx = 'N'
+	) ORD
+FULL OUTER JOIN (
+SELECT	(proj.value || ' - ' || proj.name)	Project,
+	head.documentno				SRVNo,
+	TO_CHAR(head.movementdate,'DD-MM-YYYY')	RECDDT,
+	prod.name || COALESCE(asin.description,'')		SRVPRODNAME,
+	line.movementqty			RECDQTY
+	,c_orderline_id
+FROM	m_inout			head
+JOIN	m_inoutline		line ON head.m_inout_id = line.m_inout_id
+JOIN	c_project		proj ON head.c_project_id = proj.c_project_id
+JOIN	m_product		prod ON line.m_product_id = prod.m_product_id
+LEFT JOIN	m_attributesetinstance	asin ON line.m_attributesetinstance_id = asin.m_attributesetinstance_id
+WHERE	proj.c_project_id = $P{C_Project_ID}
+AND	head.movementdate BETWEEN COALESCE(proj.startdate, DATE '2010-01-01') AND COALESCE(proj.datecontract,proj.datefinish,CURRENT_DATE)
+AND	head.docstatus='CO'
+		) SRV ON ORD.c_orderline_id = SRV.c_orderline_id
+FULL OUTER JOIN (
+SELECT	(proj.value || ' - ' || proj.name)	Project,
+	head.name				SIVNo,
+	TO_CHAR(head.movementdate,'DD-MM-YYYY')	ISSUEDT,
+	prod.name || COALESCE(asin.description,'')	SIVPRODNAME,
+	line.movementqty			ISSUEDQTY
+FROM	m_movement			head
+JOIN	m_movementline		line ON head.m_movement_id = line.m_movement_id
+JOIN	c_project		proj ON head.c_project_id = proj.c_project_id
+JOIN	m_product		prod ON line.m_product_id = prod.m_product_id
+LEFT JOIN	m_attributesetinstance	asin ON line.m_attributesetinstance_id = asin.m_attributesetinstance_id
+WHERE	proj.c_project_id = $P{C_Project_ID}
+AND	head.movementdate BETWEEN COALESCE(proj.startdate, DATE '2010-01-01') AND COALESCE(proj.datecontract,proj.datefinish,CURRENT_DATE)
+AND	head.processed='Y'
+) SIV ON SRV.SRVPRODNAME = SIV.SIVPRODNAME
+ORDER BY ORD.ORDDT,ORD.ORDPRODNAME]]>
+		</queryString>
+		<field name="project" class="java.lang.String"/>
+		<field name="pono" class="java.lang.String"/>
+		<field name="orddt" class="java.lang.String"/>
+		<field name="ordprodname" class="java.lang.String"/>
+		<field name="ordqty" class="java.math.BigDecimal"/>
+		<field name="price" class="java.math.BigDecimal"/>
+		<field name="srvno" class="java.lang.String"/>
+		<field name="recddt" class="java.lang.String"/>
+		<field name="srvprodname" class="java.lang.String"/>
+		<field name="recdqty" class="java.math.BigDecimal"/>
+		<field name="sivno" class="java.lang.String"/>
+		<field name="issuedt" class="java.lang.String"/>
+		<field name="sivprodname" class="java.lang.String"/>
+		<field name="issuedqty" class="java.math.BigDecimal"/>
+	</subDataset>
+	<parameter name="C_Project_ID" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[SELECT	(value || ' - ' || name) AS Project
+FROM	c_project
+WHERE	c_project_id = $P{C_Project_ID};]]>
+	</queryString>
+	<field name="project" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="80" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="1" width="752" height="20"/>
+				<textElement textAlignment="Center">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Project Wise Stock Report (Order/Receipt/Issue)]]></text>
+			</staticText>
+			<textField pattern="EEEEE dd MMMMM yyyy">
+				<reportElement x="486" y="20" width="264" height="20"/>
+				<textElement textAlignment="Right">
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA["Report Generated on: " + new java.util.Date().toString()]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="20" width="329" height="20"/>
+				<textElement>
+					<font isBold="true"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{project}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="40" width="348" height="39" isPrintWhenDetailOverflows="true"/>
+				<textElement rotation="None" markup="none">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[*Draft & Voided Purchase Orders are excluded.
+*Goods Receipts(SRV's) included only which are in 'completed' status.
+*Goods Movements(SIV's) included only which are 'Processed'.]]></text>
+			</staticText>
+		</band>
+	</title>
+	<summary>
+		<band height="50" splitType="Stretch">
+			<componentElement>
+				<reportElement key="table 1" style="table 1" x="0" y="0" width="752" height="50"/>
+				<jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
+					<datasetRun subDataset="Rpt CS Dataset">
+						<datasetParameter name="C_Project_ID">
+							<datasetParameterExpression><![CDATA[$P{C_Project_ID}]]></datasetParameterExpression>
+						</datasetParameter>
+						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+					</datasetRun>
+					<jr:columnGroup width="300">
+						<jr:tableHeader height="30" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="300" height="30" backcolor="#00CC00"/>
+								<box rightPadding="0">
+									<pen lineWidth="1.0"/>
+									<topPen lineWidth="1.0"/>
+									<leftPen lineWidth="1.0"/>
+									<bottomPen lineWidth="1.0"/>
+									<rightPen lineWidth="1.0"/>
+								</box>
+								<textElement textAlignment="Center">
+									<font isBold="true"/>
+								</textElement>
+								<text><![CDATA[Purchase Order]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:columnGroup width="300">
+							<jr:column width="70">
+								<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+									<staticText>
+										<reportElement mode="Opaque" x="0" y="0" width="70" height="30" backcolor="#86E294"/>
+										<textElement/>
+										<text><![CDATA[Document#]]></text>
+									</staticText>
+								</jr:columnHeader>
+								<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+									<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+										<reportElement x="0" y="0" width="70" height="20"/>
+										<textElement/>
+										<textFieldExpression class="java.lang.String"><![CDATA[$F{pono}]]></textFieldExpression>
+									</textField>
+								</jr:detailCell>
+							</jr:column>
+							<jr:column width="90">
+								<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+									<staticText>
+										<reportElement mode="Opaque" x="0" y="0" width="90" height="30" backcolor="#86E294"/>
+										<textElement/>
+										<text><![CDATA[Product]]></text>
+									</staticText>
+								</jr:columnHeader>
+								<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+									<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+										<reportElement x="0" y="0" width="90" height="20"/>
+										<textElement/>
+										<textFieldExpression class="java.lang.String"><![CDATA[$F{ordprodname}]]></textFieldExpression>
+									</textField>
+								</jr:detailCell>
+							</jr:column>
+							<jr:column width="58">
+								<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+									<staticText>
+										<reportElement mode="Opaque" x="0" y="0" width="58" height="30" backcolor="#86E294"/>
+										<textElement/>
+										<text><![CDATA[Date]]></text>
+									</staticText>
+								</jr:columnHeader>
+								<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+									<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+										<reportElement x="0" y="0" width="58" height="20"/>
+										<textElement/>
+										<textFieldExpression class="java.lang.String"><![CDATA[$F{orddt}]]></textFieldExpression>
+									</textField>
+								</jr:detailCell>
+							</jr:column>
+							<jr:column width="36">
+								<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+									<staticText>
+										<reportElement mode="Opaque" x="0" y="0" width="36" height="30" backcolor="#86E294"/>
+										<textElement/>
+										<text><![CDATA[Qty]]></text>
+									</staticText>
+								</jr:columnHeader>
+								<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+									<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+										<reportElement x="0" y="0" width="36" height="20"/>
+										<textElement/>
+										<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{ordqty}]]></textFieldExpression>
+									</textField>
+								</jr:detailCell>
+							</jr:column>
+							<jr:column width="46">
+								<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+									<staticText>
+										<reportElement mode="Opaque" x="0" y="0" width="46" height="30" backcolor="#86E294"/>
+										<textElement/>
+										<text><![CDATA[Price]]></text>
+									</staticText>
+								</jr:columnHeader>
+								<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+									<textField isStretchWithOverflow="true" pattern="#,##0.00" isBlankWhenNull="true">
+										<reportElement x="0" y="0" width="46" height="20"/>
+										<textElement/>
+										<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{price}]]></textFieldExpression>
+									</textField>
+								</jr:detailCell>
+							</jr:column>
+						</jr:columnGroup>
+					</jr:columnGroup>
+					<jr:columnGroup width="250">
+						<jr:tableHeader height="30" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="250" height="30" backcolor="#00CC00"/>
+								<box>
+									<pen lineWidth="1.0"/>
+									<topPen lineWidth="1.0"/>
+									<leftPen lineWidth="1.0"/>
+									<bottomPen lineWidth="1.0"/>
+									<rightPen lineWidth="1.0"/>
+								</box>
+								<textElement textAlignment="Center">
+									<font isBold="true"/>
+								</textElement>
+								<text><![CDATA[Goods Receipt]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:column width="75">
+							<jr:tableHeader style="table 1_TH" height="0" rowSpan="1"/>
+							<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+								<staticText>
+									<reportElement mode="Opaque" x="0" y="0" width="75" height="30" backcolor="#86E294"/>
+									<textElement/>
+									<text><![CDATA[Document#]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+								<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+									<reportElement x="0" y="0" width="75" height="20"/>
+									<textElement/>
+									<textFieldExpression class="java.lang.String"><![CDATA[$F{srvno}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="90">
+							<jr:tableHeader style="table 1_TH" height="0" rowSpan="1"/>
+							<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+								<staticText>
+									<reportElement mode="Opaque" x="0" y="0" width="90" height="30" backcolor="#86E294"/>
+									<textElement/>
+									<text><![CDATA[Product]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+								<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+									<reportElement x="0" y="0" width="90" height="20"/>
+									<textElement/>
+									<textFieldExpression class="java.lang.String"><![CDATA[$F{srvprodname}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="57">
+							<jr:tableHeader style="table 1_TH" height="0" rowSpan="1"/>
+							<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+								<staticText>
+									<reportElement mode="Opaque" x="0" y="0" width="57" height="30" backcolor="#86E294"/>
+									<textElement/>
+									<text><![CDATA[Date]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+								<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+									<reportElement x="0" y="0" width="57" height="20"/>
+									<textElement/>
+									<textFieldExpression class="java.lang.String"><![CDATA[$F{recddt}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="28">
+							<jr:tableHeader style="table 1_TH" height="0" rowSpan="1"/>
+							<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+								<staticText>
+									<reportElement mode="Opaque" x="0" y="0" width="28" height="30" backcolor="#86E294"/>
+									<textElement/>
+									<text><![CDATA[Qty]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+								<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+									<reportElement x="0" y="0" width="28" height="20"/>
+									<textElement/>
+									<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{recdqty}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+					</jr:columnGroup>
+					<jr:columnGroup width="219">
+						<jr:tableHeader height="30" rowSpan="1">
+							<staticText>
+								<reportElement mode="Opaque" x="0" y="0" width="219" height="30" backcolor="#00CC00"/>
+								<box>
+									<pen lineWidth="1.0"/>
+									<topPen lineWidth="1.0"/>
+									<leftPen lineWidth="1.0"/>
+									<bottomPen lineWidth="1.0"/>
+									<rightPen lineWidth="1.0"/>
+								</box>
+								<textElement textAlignment="Center">
+									<font isBold="true"/>
+								</textElement>
+								<text><![CDATA[Production Issue]]></text>
+							</staticText>
+						</jr:tableHeader>
+						<jr:column width="62">
+							<jr:tableHeader style="table 1_TH" height="0" rowSpan="1"/>
+							<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+								<staticText>
+									<reportElement mode="Opaque" x="0" y="0" width="62" height="30" backcolor="#86E294"/>
+									<textElement/>
+									<text><![CDATA[Document#]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+								<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+									<reportElement x="0" y="0" width="62" height="20"/>
+									<textElement/>
+									<textFieldExpression class="java.lang.String"><![CDATA[$F{sivno}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="77">
+							<jr:tableHeader style="table 1_TH" height="0" rowSpan="1"/>
+							<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+								<staticText>
+									<reportElement mode="Opaque" x="0" y="0" width="77" height="30" backcolor="#86E294"/>
+									<textElement/>
+									<text><![CDATA[Product]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+								<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+									<reportElement x="0" y="0" width="77" height="20"/>
+									<textElement/>
+									<textFieldExpression class="java.lang.String"><![CDATA[$F{sivprodname}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="54">
+							<jr:tableHeader style="table 1_TH" height="0" rowSpan="1"/>
+							<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+								<staticText>
+									<reportElement mode="Opaque" x="0" y="0" width="54" height="30" backcolor="#86E294"/>
+									<textElement/>
+									<text><![CDATA[Date]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+								<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+									<reportElement x="0" y="0" width="54" height="20"/>
+									<textElement/>
+									<textFieldExpression class="java.lang.String"><![CDATA[$F{issuedt}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+						<jr:column width="26">
+							<jr:tableHeader style="table 1_TH" height="0" rowSpan="1"/>
+							<jr:columnHeader style="table 1_CH" height="31" rowSpan="1">
+								<staticText>
+									<reportElement mode="Opaque" x="0" y="0" width="26" height="30" backcolor="#86E294"/>
+									<textElement/>
+									<text><![CDATA[Qty]]></text>
+								</staticText>
+							</jr:columnHeader>
+							<jr:detailCell style="table 1_TD" height="30" rowSpan="1">
+								<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+									<reportElement x="0" y="0" width="26" height="20"/>
+									<textElement/>
+									<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{issuedqty}]]></textFieldExpression>
+								</textField>
+							</jr:detailCell>
+						</jr:column>
+					</jr:columnGroup>
+				</jr:table>
+			</componentElement>
+		</band>
+	</summary>
+</jasperReport>

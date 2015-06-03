@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+  <database name="TRIGGER DTPO_COPVALUE">
+    <trigger name="DTPO_COPVALUE" table="DTPO_POCOP" fires="before" insert="true" update="true" delete="false" foreach="row">
+      <body><![CDATA[
+/*************************************************************************
+* The contents of this file are subject to the Openbravo  Public  License
+* Version  1.1  (the  "License"),  being   the  Mozilla   Public  License
+* Version 1.1  with a permitted attribution clause; you may not  use this
+* file except in compliance with the License. You  may  obtain  a copy of
+* the License at http://www.openbravo.com/legal/license.html
+* Software distributed under the License  is  distributed  on  an "AS IS"
+* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+* License for the specific  language  governing  rights  and  limitations
+* under the License.
+* The Original Code is Openbravo ERP.
+* The Initial Developer of the Original Code is Openbravo SLU
+* All portions are Copyright (C) 2001-2012 Openbravo SLU
+* All Rights Reserved.
+* Contributor(s):  ______________________________________.
+************************************************************************/
+   
+v_org_id  varchar(32);
+v_client_id varchar(32);
+v_linenetamt NUMBER;
+v_taxID varchar(32);
+v_isadvance NUMBER;
+v_poadvanceamt NUMBER;
+v_sumofpercent NUMBER;
+BEGIN
+    
+    IF AD_isTriggerEnabled()='N' THEN RETURN;
+    END IF;
+
+IF(TG_OP='INSERT' OR TG_OP='UPDATE') THEN
+	
+
+		select COALESCE(count(*),0) into v_isadvance from c_orderline 
+		join dtpo_pocop on c_orderline.c_orderline_id=dtpo_pocop.c_orderline_id where c_orderline.c_orderline_id=:new.c_orderline_id and dtpo_pocop.isadvanceamt='Y';
+	--raise exception '%','v_isadvance'||v_isadvance;
+	IF(:new.higherpercentage ='N') THEN
+				select (linenetamt*c_tax.rate)/100 + linenetamt into v_linenetamt from c_orderline 
+				join c_tax on c_orderline.c_tax_id=c_tax.c_tax_id
+				where c_orderline_id=:new.c_orderline_id;
+		IF(v_isadvance > 0 ) THEN
+ 
+			select COALESCE(em_dtpo_advamt,0) into v_poadvanceamt from c_order 
+			join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+			join dtpo_pocop on dtpo_pocop.c_orderline_id=c_orderline.c_orderline_id
+			where c_orderline.c_orderline_id=:new.c_orderline_id and  dtpo_pocop.isadvanceamt='Y' ;
+				--raise exception '%','test v_advanceamt'||new.c_orderline_id ;
+
+			IF(:new.paymentpercent > 0) THEN
+							-- raise exception '%','v_linenetamt'||new.copvalue;
+
+				:new.copvalue=(v_linenetamt*:new.paymentpercent)/100 - ((v_linenetamt*:new.paymentpercent)/100*v_poadvanceamt)/100;
+				-- raise exception '%','v_linenetamt'||new.copvalue;
+			END IF;
+			
+			IF(:new.paymentpercent = 0) THEN
+				
+				 raise exception '%','v_linenetamt'||:new.copvalue;
+			END IF;
+		END IF;
+		IF(v_isadvance = 0) THEN
+			IF(:new.paymentpercent>0) THEN
+		--raise exception '%','v_isadvance'||v_linenetamt;
+					:new.copvalue=(v_linenetamt*:new.paymentpercent)/100;
+			END IF;
+		END IF;
+		
+	END IF;
+
+	IF(:new.higherpercentage = 'Y') THEN
+		IF(:new.percentage >0) THEN
+						select linenetamt,c_tax_id into v_linenetamt,v_taxID from c_orderline where c_orderline_id=:new.c_orderline_id;
+						:new.copvalue=(v_linenetamt*:new.paymentpercent)/100 - (v_linenetamt*:new.percentage)/100;
+	
+		END IF;
+	END IF;
+	 
+	
+END IF; 
+
+END DTPO_COPVALUE
+]]></body>
+    </trigger>
+  </database>

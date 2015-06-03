@@ -1,0 +1,318 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTZK_DATAIMPORT_SCENARIO6">
+    <function name="DTZK_DATAIMPORT_SCENARIO6" type="NUMERIC">
+      <parameter name="p_item_code" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_discription" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_area" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_make" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_model" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_itemno" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_hsncode" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_origin" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_loading" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_demand" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_uom" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_qty" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_rate" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_insurnce" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_freight" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_package" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_others" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_importtotal" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_localbasic" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_excise" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_excisetotal" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_vat" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_localothers" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_supplytotal" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_instlbasic" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_service" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_instlothers" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_instltotal" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_supplyamount" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_localamount" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_instlamount" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_attribute_total" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_order_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[/*************************************************************************
+* The contents of this file are subject to the Openbravo  Public  License
+* Version  1.1  (the  "License"),  being   the  Mozilla   Public  License
+* Version 1.1  with a permitted attribution clause; you may not  use this
+* file except in compliance with the License. You  may  obtain  a copy of
+* the License at http://www.openbravo.com/legal/license.html
+* Software distributed under the License  is  distributed  on  an "AS IS"
+* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+* License for the specific  language  governing  rights  and  limitations
+* under the License.
+* The Original Code is Openbravo ERP.
+* The Initial Developer of the Original Code is Openbravo SLU
+* All portions are Copyright (C) 2008-2009 Openbravo SLU
+* All Rights Reserved.
+* Contributor(s):  ______________________________________.
+************************************************************************/      
+
+  v_countschemas INTEGER:=1; 
+  v_parent_id ad_treenode.parent_id%TYPE;
+  v_node_id ad_treenode.parent_id%TYPE;
+  v_clientID varchar(32);
+  v_orgID varchar(32); 
+  cur_org_le RECORD;
+  v_rowid NUMBER;
+  v_data varchar(255);
+  v_columnid NUMBER;
+  v_maindata varchar(255);
+  v_dataexsists NUMBER;
+  v_MData NUMBER;
+  v_SData NUMBER;
+  v_contractamt NUMBER(10,2);
+  v_userID varchar(32);
+  v_count NUMBER:=0;
+  v_contractcopID character varying(32);
+  v_sumcopvalue NUMBER(10,2);
+  v_contractboqfileID  character varying(32);
+  v_getuuid1 character varying(32);
+  v_getuuid2 character varying(32);
+  v_pocopfile_id character varying(32);
+  v_copno character varying(32);
+  v_copdocexsists character varying(60);
+  v_attribute NUMBER;
+  v_attribute_id character varying(32);
+  v_productuom NUMBER;
+  v_product_uom_id character varying(32);
+  v_productsearch NUMBER;
+  v_uomcount NUMBER;
+  v_taxcatID character varying(32);
+  v_productcatID character varying(32);
+  v_uomID character varying(32);
+  v_warehouseID character varying(32);
+  v_productID character varying(32);
+  v_uompoID character varying(32);
+  v_taxID character varying(32);
+  v_pricelist character varying(32);
+  v_product character varying(32);
+  v_productexsistsinline NUMBER:=0;
+  v_attributevalue NUMBER;
+  v_attributset NUMBER;
+  v_attributeuse NUMBER;
+  v_product_id character varying(32);
+  v_productcount NUMBER;
+  v_attributeset_id character varying(32);
+  v_attributevalue_id character varying(32); 
+  v_attributesetinstance_id character varying(32);
+  attributeinstanccount NUMBER;
+    product_ID character varying(32);
+    v_name text;
+
+BEGIN
+select dtpo_pocopfile_id,ad_client_id,ad_org_id,createdby into v_pocopfile_id,v_clientID,v_orgID,v_userID
+from dtpo_pocopfile where c_order_id=p_order_id;
+--raise exception '%','Order id:'||p_order_id;
+select count(*) into v_productcount from m_product where value like p_item_code::text;
+if(v_productcount = 0) THEN
+
+raise exception '%',''||p_item_code::text||' Item Code Not Present In Master Data Please Insert 9 Digit Code'; 
+
+ELSE
+select name,m_product_id into v_name,v_product_id from m_product where value like p_item_code::text;
+select count(*) into v_attribute from m_attribute where name=p_item_code::text;
+IF(v_attribute = 0) THEN
+
+INSERT INTO m_attribute(
+                                                      m_attribute_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+                                                      updated, updatedby, "name",islist,description)
+                                VALUES (get_uuid(), v_clientID, v_orgID, 'Y',now(), v_userID,  
+                                             now(),v_userID, p_item_code::text,'Y',v_name);
+END IF;
+
+select m_attribute_id into v_attribute_id from m_attribute where name like p_item_code::text;
+select count(*) into v_attributevalue from m_attributevalue where name = p_attribute_discription and m_attribute_id = v_attribute_id;
+IF(v_attributevalue = 0 ) THEN
+
+                            INSERT INTO m_attributevalue(
+                                  m_attributevalue_id, ad_client_id, ad_org_id, isactive, created, 
+                                                            createdby, updated, updatedby, m_attribute_id, "value", "name", 
+                                                            em_dtpo_itemno, em_dtpo_make, em_dtpo_model, em_dtpo_countryoforigin, em_dtpo_portofloading, 
+                                                            em_dtpo_uom, em_dtpo_area,em_dtpo_hsncode)
+                                            VALUES (get_uuid(), v_clientID, v_orgID, 'Y',now(),
+                                                        v_userID ,now() , v_userID, v_attribute_id, p_item_code::text,p_attribute_discription,
+                                                        p_attribute_itemno, p_attribute_make, p_attribute_model, p_attribute_origin, 
+                                                        p_attribute_loading, p_attribute_uom,p_area,p_attribute_hsncode::text);
+                
+
+END IF; 
+select count (*) into v_attributset from m_attributeset where name =  p_item_code::text; 
+IF(v_attributset = 0)THEN
+
+                               INSERT INTO m_attributeset(
+                                                          m_attributeset_id, ad_client_id, ad_org_id, isactive, created, 
+                                                          createdby, updated, updatedby, "name",isserno,islot,discription)
+                                                VALUES (get_uuid(), v_clientID, v_orgID, 'Y',now(), v_userID, 
+                                                             now(),v_userID,  p_item_code::text,'N','N',v_name);
+
+                END IF;    
+select m_attributeset_id into v_attributeset_id from m_attributeset where name like p_item_code::text;
+        select count(*) into v_attributeuse from m_attributeuse where m_attribute_id= v_attribute_id and m_attributeset_id =  v_attributeset_id;              
+                IF(v_attributeuse = 0)THEN
+
+                                INSERT INTO m_attributeuse(
+                                                          m_attributeuse_id, m_attribute_id, m_attributeset_id, ad_client_id, 
+                                                          ad_org_id, isactive, created, createdby, updated, updatedby, 
+                                                          seqno)
+                                                VALUES (get_uuid(), v_attribute_id, v_attributeset_id, v_clientID, 
+                                                          v_orgID, 'Y', now(), v_userID,now(),v_userID, 
+                                                        10);
+
+                END IF;
+     
+
+                /*select count(*) into v_productcount from m_product where name like p_item_code::text;
+               -- select m_attributset_id into v_attributeset_id from m_attributeset where name like p_item_code;
+                if(v_productcount = 0) THEN
+                                product_ID:=get_uuid();
+
+INSERT INTO m_product(
+m_product_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+updated, updatedby, "value", "name",  c_uom_id,  
+ispurchased,  m_product_category_id, c_taxcategory_id,producttype,production,m_attributeset_id)
+VALUES (product_ID, v_clientID,v_orgID, 'Y', now(),v_userID, 
+now(),v_userID, p_item_code::text, p_item_code::text, 
+(select c_uom_id from c_uom where name like 'Unit'), 
+'Y', (select m_product_category_id from m_product_category where name like 'Civil'), 
+(select c_taxcategory_id from c_taxcategory where name like 'NO TAX'),'Item','N',v_attributeset_id);
+
+INSERT INTO m_productprice(
+                                                                m_productprice_id, m_pricelist_version_id, m_product_id, ad_client_id, 
+                                                                ad_org_id, isactive, created, createdby, updated, updatedby, 
+                                                                pricelist, pricestd, pricelimit, "cost")
+                                VALUES (get_uuid(), (select m_pricelist_version_id from m_pricelist_version where name like 'Vendor Price List Version 1'), product_ID, v_clientID, 
+                                              v_orgID, 'Y', now(),v_userID, 
+now(),v_userID, 
+                                                        0, 0, 0, 0);    
+                ELSE 
+select m_product_id into v_product_id from m_product where name like p_item_code::text;*/
+update m_product set m_attributeset_id= v_attributeset_id where m_product_id = v_product_id;
+                --END IF;
+
+                select count(*) into v_productexsistsinline from c_order join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+where c_order.c_order_id=p_order_id and c_orderline.m_product_id=
+(select m_product_id from m_product  join m_attributeset on m_product.m_attributeset_id=m_attributeset.m_attributeset_id 
+where upper(m_product.name) LIKE upper(p_item_code::text) and upper(m_attributeset.name) LIKE upper(p_item_code::text));
+
+
+select m_warehouse_id,em_dtpo_c_tax_id into v_warehouseID,v_taxID from c_order where c_order_id=p_order_id;
+select m_product_id,c_uom_id into v_productID,v_uompoID from m_product where value = p_item_code::text;
+select c_tax_id into v_taxID from c_tax where name like  'NO TAX';
+
+select count(*) into attributeinstanccount from m_attributesetinstance where description=p_attribute_discription  and m_attributeset_id=v_attributeset_id;
+if(attributeinstanccount = 0) THEN
+ v_attributesetinstance_id=get_uuid();
+INSERT INTO m_attributesetinstance(
+m_attributesetinstance_id, ad_client_id, ad_org_id, isactive, 
+created, createdby, updated, updatedby, m_attributeset_id,  description)
+VALUES (v_attributesetinstance_id, v_clientID,v_orgID, 'Y', now(),v_userID, 
+now(),v_userID,v_attributeset_id,p_attribute_discription);
+else
+select m_attributesetinstance_id into v_attributesetinstance_id from m_attributesetinstance where description=p_attribute_discription  and m_attributeset_id=v_attributeset_id;
+end if;
+
+
+
+                 INSERT INTO c_orderline(
+                                            c_orderline_id,ad_client_id,ad_org_id,isactive,created, createdby,updated, updatedby,c_order_id,
+                                            line,dateordered,m_product_id,m_warehouse_id,directship,c_uom_id,qtyordered,qtyreserved,qtydelivered,qtyinvoiced,c_currency_id,
+                                                            pricelist,priceactual,pricelimit,linenetamt,freightamt,
+                                                            c_tax_id,isdescription,pricestd,grosspricestd,em_dtpo_searchkey,m_attributesetinstance_id,
+                                                            em_dtpo_importbasic,em_dtpo_insurance,em_dtpo_frieght,em_dtpo_pkg,em_dtpo_others,em_dtpo_importtotal,
+                                                            em_dtpo_supplybasic,em_dtpo_excise,em_dtpo_excisetotal,em_dtpo_vat_cst,em_dtpo_supplyothers,
+                                                            em_dtpo_supplytotal,em_dtpo_installationbasic,em_dtpo_servicetax,
+                                                            em_dtpo_installationothers,em_dtpo_installationtotal,
+                                                            em_dtpo_supplyamount,em_dtpo_importamount,em_dtpo_installationamount,
+                                                            em_dtpo_total,description)
+                VALUES (get_uuid(),v_clientID,v_orgID, 'Y', now(),v_userID,now(),v_userID,p_order_id,
+                                            (select coalesce(max(line),0) +10 from c_orderline where c_order_id=p_order_id),
+                                            now(),v_productID,v_warehouseID,'N',v_uompoID,p_attribute_qty,
+                                            0,0,0,'304',
+                                            0,(p_attribute_importtotal + p_attribute_supplytotal + p_attribute_instltotal),0,p_attribute_total,0.00,v_taxID,'N',
+                                            (p_attribute_importtotal + p_attribute_supplytotal + p_attribute_instltotal),0,p_item_code::text,v_attributesetinstance_id,
+                                            p_attribute_rate,p_attribute_insurnce,p_attribute_freight,p_attribute_package,p_attribute_others,p_attribute_importtotal,
+                                            p_attribute_localbasic,p_attribute_excise,p_attribute_excisetotal,p_attribute_vat,p_attribute_localothers,
+                                                            p_attribute_supplytotal,p_attribute_instlbasic,p_attribute_service,
+                                                            p_attribute_instlothers,p_attribute_instltotal,
+                                                            p_attribute_supplyamount,p_attribute_localamount,p_attribute_instlamount,
+                                                            p_attribute_total,p_attribute_demand);
+                
+
+
+END IF;
+     
+return 1;
+END DTZK_DATAIMPORT_SCENARIO6
+]]></body>
+    </function>
+  </database>

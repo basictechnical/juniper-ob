@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION IDLJAVA_PRODUCTIMPORT">
+    <function name="IDLJAVA_PRODUCTIMPORT" type="NULL">
+      <parameter name="p_searchkey" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_description1" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_uom" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_producttype" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[/*************************************************************************
+* The contents of this file are subject to the Openbravo  Public  License
+* Version  1.1  (the  "License"),  being   the  Mozilla   Public  License
+* Version 1.1  with a permitted attribution clause; you may not  use this
+* file except in compliance with the License. You  may  obtain  a copy of
+* the License at http://www.openbravo.com/legal/license.html
+* Software distributed under the License  is  distributed  on  an "AS IS"
+* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+* License for the specific  language  governing  rights  and  limitations
+* under the License.
+* The Original Code is Openbravo ERP.
+* The Initial Developer of the Original Code is Openbravo SLU
+* All portions are Copyright (C) 2008-2009 Openbravo SLU
+* All Rights Reserved.
+* Contributor(s):  ______________________________________.
+************************************************************************/      
+v_uom character varying(32):='';
+v_lwruom character varying(32):='';
+v_upruom character varying(32):='';
+v_uom_id character varying(32):='';
+v_prodctdesc character varying(255):='';
+v_prodcat character varying(32):='';
+BEGIN
+		select c_uom_id into v_uom from c_uom where name = p_uom;
+		select m_product_category_id into v_prodcat from m_product_category where name like 'Others';
+		select substr(p_description1,1,254) into v_prodctdesc from dual;
+				raise notice '%','asdf------------------'||v_uom;
+			If(v_uom <> '') THEN
+					INSERT INTO m_product(
+								m_product_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+								updated, updatedby, "value", "name", description, c_uom_id,  
+								ispurchased,  m_product_category_id, c_taxcategory_id,producttype,production,em_idljava_desc
+							)
+								VALUES (get_uuid(), '251F03EE4A4E4D84B41B4439DCA81471', '0', 'Y', now(), '100', 
+								now(),'100', p_searchkey, p_searchkey, v_prodctdesc,v_uom, 
+								'Y', v_prodcat, 'E2059D78A5C24C4EBACB65211C2C6011',p_producttype,'N',p_description1
+							);
+			ELSE
+				v_uom_id:=get_uuid();
+				select upper(substr(p_uom,1,1)) into v_lwruom from dual;
+				select lower(substr(p_uom,1,1)) into v_upruom  from dual;
+				
+
+				
+					INSERT INTO c_uom(
+                                                                 c_uom_id, ad_client_id, ad_org_id, isactive, created, updated, 
+                                                                 createdby, updatedby, x12de355, uomsymbol, "name",
+                                                                 stdprecision, costingprecision)
+                                                              VALUES (v_uom_id, '251F03EE4A4E4D84B41B4439DCA81471', '0', 'Y',now(), now(), 
+                                                                      '100','100', v_upruom, v_lwruom, p_uom, 
+                                                                       '2', '0');
+
+
+
+					
+					INSERT INTO m_product(
+								m_product_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+								updated, updatedby, "value", "name", description, c_uom_id,  
+								ispurchased,  m_product_category_id, c_taxcategory_id,producttype,production,em_idljava_desc
+							)
+								VALUES (get_uuid(), '251F03EE4A4E4D84B41B4439DCA81471', '0', 'Y', now(), '100', 
+								now(),'100', p_searchkey, p_searchkey, v_prodctdesc,v_uom_id, 
+								'Y', v_prodcat, 'E2059D78A5C24C4EBACB65211C2C6011',p_producttype,'N',p_description1
+							);
+			END IF;
+END IDLJAVA_PRODUCTIMPORT
+]]></body>
+    </function>
+  </database>

@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+  <database name="MODIFIED TABLE C_PROJECT">
+    <table name="C_PROJECT" primaryKey="C_PROJECT_KEY">
+      <column name="EM_DTZK_ASSOCIATEPB" primaryKey="false" required="false" type="VARCHAR" size="255" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_DTZK_ASSOCIATECOSTBUDGET" primaryKey="false" required="false" type="CHAR" size="1" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_DTZK_FILENAME" primaryKey="false" required="false" type="VARCHAR" size="255" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_DTZK_COSTBUDGETVIEW" primaryKey="false" required="false" type="VARCHAR" size="255" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+    </table>
+  </database>

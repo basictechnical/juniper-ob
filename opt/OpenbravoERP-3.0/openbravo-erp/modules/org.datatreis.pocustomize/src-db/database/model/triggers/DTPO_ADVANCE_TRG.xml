@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+  <database name="TRIGGER DTPO_ADVANCE_TRG">
+    <trigger name="DTPO_ADVANCE_TRG" table="C_ORDERLINE" fires="after" insert="true" update="true" delete="false" foreach="row">
+      <body><![CDATA[
+
+
+
+
+/*************************************************************************
+* The contents of this file are subject to the Openbravo  Public  License
+* Version  1.1  (the  "License"),  being   the  Mozilla   Public  License
+* Version 1.1  with a permitted attribution clause; you may not  use this
+* file except in compliance with the License. You  may  obtain  a copy of
+* the License at http://www.openbravo.com/legal/license.html
+* Software distributed under the License  is  distributed  on  an "AS IS"
+* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+* License for the specific  language  governing  rights  and  limitations
+* under the License.
+* The Original Code is Openbravo ERP.
+* The Initial Developer of the Original Code is Openbravo SLU
+* All portions are Copyright (C) 2001-2012 Openbravo SLU
+* All Rights Reserved.
+* Contributor(s):  ______________________________________.
+************************************************************************/
+ v_advanceamt NUMBER;
+v_isadvancecount NUMBER;
+v_pocopid character varying(32);
+v_rate NUMBER(10,2);
+v_total NUMBER(10,2);
+BEGIN
+    
+    IF AD_isTriggerEnabled()='N' THEN RETURN;
+    END IF;
+IF(TG_OP='INSERT' OR TG_OP='UPDATE') THEN
+
+
+ 
+
+	select COALESCE(count(*),0) into  v_isadvancecount from dtpo_pocop where c_orderline_id=:new.c_orderline_id and dtpo_pocop.isadvanceamt='Y' ; 
+			--raise exception '%','test v_advanceamt'||new.c_orderline_id;
+				--raise exception '%','test v_advanceamt'||new.linenetamt;
+
+	IF(v_isadvancecount >0) THEN
+	
+	select rate into v_rate from c_tax join c_orderline on c_orderline.c_tax_id=c_tax.c_tax_id
+	left join dtpo_pocop on dtpo_pocop.c_orderline_id=c_orderline.c_orderline_id
+        where c_orderline.c_orderline_id=:new.c_orderline_id;
+        
+	--raise exception '%','v_rate'||v_rate;
+		select em_dtpo_advamt,dtpo_pocop_id into v_advanceamt,v_pocopid from c_order 
+		join c_orderline on c_orderline.c_order_id=c_order.c_order_id
+		join dtpo_pocop on dtpo_pocop.c_orderline_id=c_orderline.c_orderline_id
+		where c_order.c_order_id=:new.c_order_id and dtpo_pocop.isadvanceamt='Y';
+
+		v_total:=:new.linenetamt + (:new.linenetamt*v_rate/100);
+	IF(v_advanceamt>0) THEN
+			update dtpo_pocop set copvalue=(v_total*v_advanceamt)/100 where dtpo_pocop_id=v_pocopid;
+	END IF;
+	END IF;
+
+	if(v_isadvancecount = 0) THEN
+	
+	select rate into v_rate from c_tax join c_orderline on c_orderline.c_tax_id=c_tax.c_tax_id
+	left join dtpo_pocop on dtpo_pocop.c_orderline_id=c_orderline.c_orderline_id
+        where c_orderline.c_orderline_id=:new.c_orderline_id;
+        
+        --raise exception '%','v_rate'||new.c_orderline_id;
+        
+			select em_dtpo_advamt into v_advanceamt from c_order where c_order_id=:new.c_order_id;
+			v_total:=:new.linenetamt + (:new.linenetamt*v_rate/100);
+
+		IF(v_advanceamt>0) THEN
+	    
+			INSERT INTO dtpo_pocop(
+				dtpo_pocop_id, c_orderline_id, ad_client_id, ad_org_id, isactive, created, createdby, updated,updatedby, 
+				copvalue, status, line, isadvanceamt)
+			VALUES (get_uuid(),:new.c_orderline_id,:new.ad_client_id,:new.ad_org_id,'Y',now(),'100',now(),'100',(v_total*v_advanceamt)/100,'DR',10,'Y');
+
+		END IF;
+	END IF;
+END IF;  
+
+END DTPO_ADVANCE_TRG
+]]></body>
+    </trigger>
+  </database>

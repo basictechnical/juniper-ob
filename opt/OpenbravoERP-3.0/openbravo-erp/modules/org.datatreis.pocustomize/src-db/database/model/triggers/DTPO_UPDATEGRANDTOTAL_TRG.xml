@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+  <database name="TRIGGER DTPO_UPDATEGRANDTOTAL_TRG">
+    <trigger name="DTPO_UPDATEGRANDTOTAL_TRG" table="C_ORDERLINE" fires="after" insert="true" update="true" delete="true" foreach="row">
+      <body><![CDATA[
+
+v_linenetamt NUMBER;
+
+
+BEGIN
+    
+    IF AD_isTriggerEnabled()='N' THEN RETURN;
+    END IF;
+    
+           --IF(TG_OP='INSERT' OR TG_OP='UPDATE')THEN
+             --   v_linenetamt:=new.em_dtpo_total;
+		--update c_order set grandtotal=v_linenetamt where c_order_id=new.c_order_id;
+           --END IF;
+
+       
+
+
+
+
+END DTPO_UPDATEGRANDTOTAL_TRG
+]]></body>
+    </trigger>
+  </database>

@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SqlClass id="class" name="SpreadsheetAttachement59AE7877F4B74AB5A44646C2B60A4B39Data" package="org.openbravo.erpWindows.PurchaseOrder">
+  <SqlClassComment>WAD Generated class</SqlClassComment>
+
+  <SqlMethod name="selectEdit" type="preparedStatement" return="multiple">
+    <SqlMethodComment>Select for edit</SqlMethodComment>
+    <Sql><![CDATA[
+        SELECT to_char(DTPO_Pocopfile.Created, ?) as created, 
+        (SELECT NAME FROM AD_USER u WHERE AD_USER_ID = DTPO_Pocopfile.CreatedBy) as CreatedByR, 
+        to_char(DTPO_Pocopfile.Updated, ?) as updated, 
+        to_char(DTPO_Pocopfile.Updated, 'YYYYMMDDHH24MISS') as Updated_Time_Stamp,  
+        DTPO_Pocopfile.UpdatedBy, 
+        (SELECT NAME FROM AD_USER u WHERE AD_USER_ID = DTPO_Pocopfile.UpdatedBy) as UpdatedByR,
+        DTPO_Pocopfile.AD_Org_ID, 
+(CASE WHEN DTPO_Pocopfile.AD_Org_ID IS NULL THEN '' ELSE  (COALESCE(TO_CHAR(TO_CHAR(COALESCE(TO_CHAR(table1.Name), ''))),'') ) END) AS AD_Org_IDR, 
+COALESCE(DTPO_Pocopfile.Isactive, 'N') AS Isactive, 
+DTPO_Pocopfile.Filename, 
+DTPO_Pocopfile.Associateboq, 
+DTPO_Pocopfile.Description, 
+COALESCE(DTPO_Pocopfile.Boqimport, 'N') AS Boqimport, 
+DTPO_Pocopfile.Importfiletype, 
+DTPO_Pocopfile.Orderline, 
+DTPO_Pocopfile.File_View, 
+DTPO_Pocopfile.C_Order_ID, 
+DTPO_Pocopfile.Copno, 
+DTPO_Pocopfile.Copamount, 
+DTPO_Pocopfile.Copstatus, 
+DTPO_Pocopfile.Copapprove, 
+DTPO_Pocopfile.Copreject, 
+DTPO_Pocopfile.Copsentapprove, 
+DTPO_Pocopfile.Filetype, 
+(CASE WHEN DTPO_Pocopfile.Filetype IS NULL THEN '' ELSE  ( COALESCE(TO_CHAR(list1.name),'') ) END) AS FiletypeR, 
+DTPO_Pocopfile.Paymenttype, 
+(CASE WHEN DTPO_Pocopfile.Paymenttype IS NULL THEN '' ELSE  ( COALESCE(TO_CHAR(list2.name),'') ) END) AS PaymenttypeR, 
+DTPO_Pocopfile.Advancetype, 
+(CASE WHEN DTPO_Pocopfile.Advancetype IS NULL THEN '' ELSE  ( COALESCE(TO_CHAR(list3.name),'') ) END) AS AdvancetypeR, 
+DTPO_Pocopfile.Createcop, 
+DTPO_Pocopfile.Usdamt, 
+DTPO_Pocopfile.Conversionrate, 
+DTPO_Pocopfile.EM_Jcm_Dols_Invoice, 
+DTPO_Pocopfile.EM_Jcm_Claimed_Invoiceamt, 
+DTPO_Pocopfile.EM_Jcm_Dorb_Invoice, 
+DTPO_Pocopfile.EM_Jcm_Advancetotal, 
+DTPO_Pocopfile.EM_Jcm_Nettotal, 
+DTPO_Pocopfile.EM_Jcm_Recoverytotal, 
+DTPO_Pocopfile.Dtpo_Pocopfile_ID, 
+DTPO_Pocopfile.AD_Client_ID, 
+ 
+        ? AS LANGUAGE 
+        FROM DTPO_Pocopfile left join (select AD_Org_ID, Name from AD_Org) table1 on (DTPO_Pocopfile.AD_Org_ID = table1.AD_Org_ID) left join ad_ref_list_v list1 on (DTPO_Pocopfile.Filetype = list1.value and list1.ad_reference_id = 'DFD16360C7334C978D1762D663D69983' and list1.ad_language = ?)  left join ad_ref_list_v list2 on (DTPO_Pocopfile.Paymenttype = list2.value and list2.ad_reference_id = '8F67BB07A9514E018722466A10D77451' and list2.ad_language = ?)  left join ad_ref_list_v list3 on (DTPO_Pocopfile.Advancetype = list3.value and list3.ad_reference_id = '916DE3645158498590BAD49ED98F2EE2' and list3.ad_language = ?) 
+        WHERE 2=2 
+
+        AND 1=1 
+        AND DTPO_Pocopfile.Dtpo_Pocopfile_ID = ? 
+        AND DTPO_Pocopfile.AD_Client_ID IN ('1') 
+           AND DTPO_Pocopfile.AD_Org_ID IN ('1') 
+    ]]></Sql>
+    <Parameter name="dateTimeFormat"></Parameter>
+    <Parameter name="dateTimeFormat"></Parameter>
+    
+    <Parameter name="paramLanguage"></Parameter>
+<Parameter name="paramLanguage"/>
+<Parameter name="paramLanguage"/>
+<Parameter name="paramLanguage"/>
+
+    <Parameter name="cOrderId" optional="true" after="AND 1=1 " id="paramKeyParent"> AND DTPO_Pocopfile.C_Order_ID = ? </Parameter>
+    <Parameter name="key"></Parameter>
+        <Parameter name="adUserClient" type="replace" optional="true" after="DTPO_Pocopfile.AD_Client_ID IN (" text="'1'"/>
+        <Parameter name="adOrgClient" type="replace" optional="true" after="DTPO_Pocopfile.AD_Org_ID IN (" text="'1'"/>
+
+    <Field name="adUserClient" value="void"></Field>
+    <Field name="adOrgClient" value="void"></Field>
+    <Field name="createdby" value="void"></Field>
+    
+    <Field name="trBgcolor" value="void"></Field>
+    <Field name="totalCount" value="void"></Field>
+    <Field name="dateTimeFormat" value=""></Field>
+  </SqlMethod>
+  
+  
+
+  <SqlMethod name="set" type="constant" return="multiple">
+      <SqlMethodComment>Create a registry</SqlMethodComment>
+      <Sql></Sql>
+    <Parameter name="cOrderId" id="paramKeyParent"></Parameter>
+<Parameter name="emJcmNettotal"></Parameter><Parameter name="copstatus"></Parameter><Parameter name="copamount"></Parameter><Parameter name="filename"></Parameter><Parameter name="fileView"></Parameter><Parameter name="copreject"></Parameter><Parameter name="paymenttype"></Parameter><Parameter name="advancetype"></Parameter><Parameter name="importfiletype"></Parameter><Parameter name="createdby"></Parameter><Parameter name="createdbyr"></Parameter><Parameter name="emJcmClaimedInvoiceamt"></Parameter><Parameter name="copno"></Parameter><Parameter name="createcop"></Parameter><Parameter name="dtpoPocopfileId"></Parameter><Parameter name="boqimport"></Parameter><Parameter name="copapprove"></Parameter><Parameter name="emJcmDorbInvoice"></Parameter><Parameter name="associateboq"></Parameter><Parameter name="adClientId"></Parameter><Parameter name="emJcmDolsInvoice"></Parameter><Parameter name="isactive"></Parameter><Parameter name="updatedby"></Parameter><Parameter name="updatedbyr"></Parameter><Parameter name="emJcmRecoverytotal"></Parameter><Parameter name="description"></Parameter><Parameter name="orderline"></Parameter><Parameter name="adOrgId"></Parameter><Parameter name="emJcmAdvancetotal"></Parameter><Parameter name="filetype"></Parameter><Parameter name="usdamt"></Parameter><Parameter name="conversionrate"></Parameter><Parameter name="copsentapprove"></Parameter>
+   </SqlMethod>
+
+
+
+
+
+
+   <SqlMethod name="selectDef426601B5F4A14310ADD8C542B6159675_0" type="preparedStatement" return="String" default="">
+    <SqlMethodComment>Select for auxiliar field</SqlMethodComment>
+    <Sql><![CDATA[
+        SELECT  ( COALESCE(TO_CHAR(TO_CHAR(COALESCE(TO_CHAR(table2.Name), ''))), '') ) as Createdby FROM AD_User left join (select AD_User_ID, Name from AD_User) table2 on (AD_User.AD_User_ID = table2.AD_User_ID) WHERE AD_User.isActive='Y' AND AD_User.AD_User_ID = ?  
+    ]]></Sql>
+<Parameter name="CreatedbyR"/>
+  </SqlMethod>
+
+   <SqlMethod name="selectDefA2E2FD14B85643F5B6BDF7F0DEC12E44_1" type="preparedStatement" return="String" default="">
+    <SqlMethodComment>Select for auxiliar field</SqlMethodComment>
+    <Sql><![CDATA[
+        SELECT  ( COALESCE(TO_CHAR(TO_CHAR(COALESCE(TO_CHAR(table2.Name), ''))), '') ) as Updatedby FROM AD_User left join (select AD_User_ID, Name from AD_User) table2 on (AD_User.AD_User_ID = table2.AD_User_ID) WHERE AD_User.isActive='Y' AND AD_User.AD_User_ID = ?  
+    ]]></Sql>
+<Parameter name="UpdatedbyR"/>
+  </SqlMethod>
+
+
+
+  <SqlMethod name="selectParentID" type="preparedStatement" return="String" default="">
+    <SqlMethodComment>return the parent ID</SqlMethodComment>
+    <Sql><![CDATA[
+        SELECT DTPO_Pocopfile.C_Order_ID AS NAME
+        FROM DTPO_Pocopfile
+        WHERE DTPO_Pocopfile.Dtpo_Pocopfile_ID = ?
+    ]]></Sql>
+    <Parameter name="key"></Parameter>
+  </SqlMethod>
+
+   <SqlMethod name="selectParent" type="preparedStatement" return="String" default="">
+    <SqlMethodComment>Select for parent field</SqlMethodComment>
+    <Sql><![CDATA[
+        SELECT (TO_CHAR(COALESCE(TO_CHAR(table1.DocumentNo), '')) || ' - ' || TO_CHAR(table1.DateOrdered, 'DD-MM-YYYY') || ' - ' || TO_CHAR(COALESCE(TO_CHAR(table1.GrandTotal), ''))) AS NAME FROM C_Order left join (select C_Order_ID, DocumentNo, DateOrdered, GrandTotal from C_Order) table1 on (C_Order.C_Order_ID = table1.C_Order_ID) WHERE C_Order.C_Order_ID = ?  
+    ]]></Sql>
+<Parameter name="cOrderId"/>
+
+  </SqlMethod>
+
+
+
+
+   <SqlMethod name="selectParentTrl" type="preparedStatement" return="String" default="">
+    <SqlMethodComment>Select for parent field</SqlMethodComment>
+    <Sql><![CDATA[
+        SELECT (TO_CHAR(COALESCE(TO_CHAR(table1.DocumentNo), '')) || ' - ' || TO_CHAR(table1.DateOrdered, 'DD-MM-YYYY') || ' - ' || TO_CHAR(COALESCE(TO_CHAR(table1.GrandTotal), ''))) AS NAME FROM C_Order left join (select C_Order_ID, DocumentNo, DateOrdered, GrandTotal from C_Order) table1 on (C_Order.C_Order_ID = table1.C_Order_ID) WHERE C_Order.C_Order_ID = ?  
+    ]]></Sql>
+<Parameter name="cOrderId"/>
+
+  </SqlMethod>
+
+
+
+
+
+
+
+
+  <SqlMethod name="update" type="preparedStatement" return="rowCount" static="false" connection="true">
+    <Sql><![CDATA[
+        UPDATE DTPO_Pocopfile
+        SET AD_Org_ID = (?) , Isactive = (?) , Filename = (?) , Associateboq = (?) , Description = (?) , Boqimport = (?) , Importfiletype = (?) , Orderline = (?) , File_View = (?) , C_Order_ID = (?) , Copno = (?) , Copamount = TO_NUMBER(?) , Copstatus = (?) , Copapprove = (?) , Copreject = (?) , Copsentapprove = (?) , Filetype = (?) , Paymenttype = (?) , Advancetype = (?) , Createcop = (?) , Usdamt = TO_NUMBER(?) , Conversionrate = TO_NUMBER(?) , EM_Jcm_Dols_Invoice = TO_DATE(?) , EM_Jcm_Claimed_Invoiceamt = TO_NUMBER(?) , EM_Jcm_Dorb_Invoice = TO_DATE(?) , EM_Jcm_Advancetotal = TO_NUMBER(?) , EM_Jcm_Nettotal = TO_NUMBER(?) , EM_Jcm_Recoverytotal = TO_NUMBER(?) , Dtpo_Pocopfile_ID = (?) , AD_Client_ID = (?) , updated = now(), updatedby = ? 
+        WHERE DTPO_Pocopfile.Dtpo_Pocopfile_ID = ? 
+                 AND DTPO_Pocopfile.C_Order_ID = ? 
+        AND DTPO_Pocopfile.AD_Client_ID IN ('1') 
+        AND DTPO_Pocopfile.AD_Org_ID IN ('1') 
+    ]]></Sql>
+    <Parameter name="adOrgId"></Parameter> <Parameter name="isactive"></Parameter> <Parameter name="filename"></Parameter> <Parameter name="associateboq"></Parameter> <Parameter name="description"></Parameter> <Parameter name="boqimport"></Parameter> <Parameter name="importfiletype"></Parameter> <Parameter name="orderline"></Parameter> <Parameter name="fileView"></Parameter> <Parameter name="cOrderId"></Parameter> <Parameter name="copno"></Parameter> <Parameter name="copamount"></Parameter> <Parameter name="copstatus"></Parameter> <Parameter name="copapprove"></Parameter> <Parameter name="copreject"></Parameter> <Parameter name="copsentapprove"></Parameter> <Parameter name="filetype"></Parameter> <Parameter name="paymenttype"></Parameter> <Parameter name="advancetype"></Parameter> <Parameter name="createcop"></Parameter> <Parameter name="usdamt"></Parameter> <Parameter name="conversionrate"></Parameter> <Parameter name="emJcmDolsInvoice"></Parameter> <Parameter name="emJcmClaimedInvoiceamt"></Parameter> <Parameter name="emJcmDorbInvoice"></Parameter> <Parameter name="emJcmAdvancetotal"></Parameter> <Parameter name="emJcmNettotal"></Parameter> <Parameter name="emJcmRecoverytotal"></Parameter> <Parameter name="dtpoPocopfileId"></Parameter> <Parameter name="adClientId"></Parameter> 
+    <Parameter name="updatedby"></Parameter>
+    <Parameter id="paramKey" name="dtpoPocopfileId"></Parameter>
+    
+    <Parameter name="cOrderId" id="paramKeyParent"></Parameter>
+        <Parameter name="adUserClient" type="replace" optional="true" after="DTPO_Pocopfile.AD_Client_ID IN (" text="'1'"/>
+        <Parameter name="adOrgClient" type="replace" optional="true" after="DTPO_Pocopfile.AD_Org_ID IN (" text="'1'"/>
+  </SqlMethod>
+
+  <SqlMethod name="insert" type="preparedStatement" return="rowCount" static="false" connection="true">
+    <Sql><![CDATA[
+        INSERT INTO DTPO_Pocopfile 
+        (AD_Org_ID, Isactive, Filename, Associateboq, Description, Boqimport, Importfiletype, Orderline, File_View, C_Order_ID, Copno, Copamount, Copstatus, Copapprove, Copreject, Copsentapprove, Filetype, Paymenttype, Advancetype, Createcop, Usdamt, Conversionrate, EM_Jcm_Dols_Invoice, EM_Jcm_Claimed_Invoiceamt, EM_Jcm_Dorb_Invoice, EM_Jcm_Advancetotal, EM_Jcm_Nettotal, EM_Jcm_Recoverytotal, Dtpo_Pocopfile_ID, AD_Client_ID, created, createdby, updated, updatedBy)
+        VALUES ((?), (?), (?), (?), (?), (?), (?), (?), (?), (?), (?), TO_NUMBER(?), (?), (?), (?), (?), (?), (?), (?), (?), TO_NUMBER(?), TO_NUMBER(?), TO_DATE(?), TO_NUMBER(?), TO_DATE(?), TO_NUMBER(?), TO_NUMBER(?), TO_NUMBER(?), (?), (?), now(), ?, now(), ?)
+    ]]></Sql>
+    <Parameter name="adOrgId"></Parameter> <Parameter name="isactive"></Parameter> <Parameter name="filename"></Parameter> <Parameter name="associateboq"></Parameter> <Parameter name="description"></Parameter> <Parameter name="boqimport"></Parameter> <Parameter name="importfiletype"></Parameter> <Parameter name="orderline"></Parameter> <Parameter name="fileView"></Parameter> <Parameter name="cOrderId"></Parameter> <Parameter name="copno"></Parameter> <Parameter name="copamount"></Parameter> <Parameter name="copstatus"></Parameter> <Parameter name="copapprove"></Parameter> <Parameter name="copreject"></Parameter> <Parameter name="copsentapprove"></Parameter> <Parameter name="filetype"></Parameter> <Parameter name="paymenttype"></Parameter> <Parameter name="advancetype"></Parameter> <Parameter name="createcop"></Parameter> <Parameter name="usdamt"></Parameter> <Parameter name="conversionrate"></Parameter> <Parameter name="emJcmDolsInvoice"></Parameter> <Parameter name="emJcmClaimedInvoiceamt"></Parameter> <Parameter name="emJcmDorbInvoice"></Parameter> <Parameter name="emJcmAdvancetotal"></Parameter> <Parameter name="emJcmNettotal"></Parameter> <Parameter name="emJcmRecoverytotal"></Parameter> <Parameter name="dtpoPocopfileId"></Parameter> <Parameter name="adClientId"></Parameter> 
+    <Parameter name="createdby"></Parameter>
+    <Parameter name="updatedby"></Parameter>
+  </SqlMethod>
+
+  <SqlMethod name="delete" type="preparedStatement" return="rowCount">
+    <Sql><![CDATA[
+        DELETE FROM DTPO_Pocopfile
+        WHERE DTPO_Pocopfile.Dtpo_Pocopfile_ID = ? 
+                 AND DTPO_Pocopfile.C_Order_ID = ? 
+        AND DTPO_Pocopfile.AD_Client_ID IN ('1') 
+        AND DTPO_Pocopfile.AD_Org_ID IN ('1') 
+    ]]></Sql>
+    <Parameter name="param1"></Parameter>
+        <Parameter name="cOrderId" id="paramKeyParent"></Parameter>
+        <Parameter name="adUserClient" type="replace" optional="true" after="DTPO_Pocopfile.AD_Client_ID IN (" text="'1'"/>
+        <Parameter name="adOrgClient" type="replace" optional="true" after="DTPO_Pocopfile.AD_Org_ID IN (" text="'1'"/>
+  </SqlMethod>
+
+  <SqlMethod name="selectOrg" type="preparedStatement" return="string">
+    <SqlMethodComment>Select for relation</SqlMethodComment>
+    <Sql><![CDATA[ 
+        SELECT AD_ORG_ID
+          FROM DTPO_Pocopfile
+         WHERE DTPO_Pocopfile.Dtpo_Pocopfile_ID = ? 
+    ]]></Sql>
+    <Parameter name="id"></Parameter>
+  </SqlMethod>
+  
+  <SqlMethod name="getCurrentDBTimestamp" type="preparedStatement" return="string">
+    <Sql><![CDATA[ 
+        SELECT to_char(Updated, 'YYYYMMDDHH24MISS') as Updated_Time_Stamp
+          FROM DTPO_Pocopfile
+         WHERE DTPO_Pocopfile.Dtpo_Pocopfile_ID = ? 
+    ]]></Sql>
+    <Parameter name="id"></Parameter>
+  </SqlMethod>
+</SqlClass>

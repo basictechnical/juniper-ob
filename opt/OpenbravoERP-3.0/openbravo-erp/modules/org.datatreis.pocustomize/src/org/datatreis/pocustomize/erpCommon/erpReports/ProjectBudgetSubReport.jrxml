@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="PBR_ProjectBudgetSubReport" pageWidth="1596" pageHeight="618" columnWidth="1556" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="218"/>
+	<property name="ireport.y" value="0"/>
+	<parameter name="C_Project_ID" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[select distinct c_project.c_project_id,c_project.name as project,copamount,
+ (rec_1stcolumn+rec_2ndcolumn+rec_3rdcolumn+rec_4thcolumn+rec_5thcolumn+rec_6thcolumn+rec_7thcolumn+rec_8thcolumn+rec_9thcolumn+rec_10thcolumn) as recoveries,
+  (adv_1stcolumn+adv_2ndcolumn+adv_3rdcolumn+adv_4thcolumn+adv_5thcolumn+adv_6thcolumn) as Advance
+ from dtpo_pocopfile
+  left join c_order on dtpo_pocopfile.c_order_id=c_order.c_order_id
+     left join c_project on c_project.c_project_id=c_order.c_project_id
+
+where   c_project.c_project_id=$P{C_Project_ID}]]>
+	</queryString>
+	<field name="c_project_id" class="java.lang.String"/>
+	<field name="project" class="java.lang.String"/>
+	<field name="copamount" class="java.math.BigDecimal"/>
+	<field name="recoveries" class="java.math.BigDecimal"/>
+	<field name="advance" class="java.math.BigDecimal"/>
+	<variable name="Total_COPAmount" class="java.math.BigDecimal" resetType="Group" resetGroup="Project_Group" calculation="Sum">
+		<variableExpression><![CDATA[$F{copamount}]]></variableExpression>
+	</variable>
+	<variable name="Total_Advance" class="java.math.BigDecimal" resetType="Group" resetGroup="Project_Group" calculation="Sum">
+		<variableExpression><![CDATA[$F{advance}]]></variableExpression>
+	</variable>
+	<variable name="Total_Recoveries" class="java.math.BigDecimal" resetType="Group" resetGroup="Project_Group" calculation="Sum">
+		<variableExpression><![CDATA[$F{recoveries}]]></variableExpression>
+	</variable>
+	<group name="Project_Group">
+		<groupExpression><![CDATA[$F{c_project_id}]]></groupExpression>
+		<groupHeader>
+			<band height="24">
+				<staticText>
+					<reportElement x="328" y="0" width="203" height="24"/>
+					<textElement verticalAlignment="Middle">
+						<font size="12" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Advance]]></text>
+				</staticText>
+				<textField evaluationTime="Group" evaluationGroup="Project_Group" isBlankWhenNull="true">
+					<reportElement x="92" y="0" width="236" height="24"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Total_COPAmount}]]></textFieldExpression>
+				</textField>
+				<textField evaluationTime="Group" evaluationGroup="Project_Group" isBlankWhenNull="true">
+					<reportElement x="1016" y="0" width="489" height="24"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Total_Recoveries}]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="933" y="0" width="83" height="24"/>
+					<textElement verticalAlignment="Middle">
+						<font size="12" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Recoveries]]></text>
+				</staticText>
+				<staticText>
+					<reportElement x="0" y="0" width="92" height="24"/>
+					<textElement textAlignment="Justified" verticalAlignment="Middle">
+						<font size="12" isBold="true"/>
+					</textElement>
+					<text><![CDATA[COP Amount]]></text>
+				</staticText>
+				<textField evaluationTime="Group" evaluationGroup="Project_Group" isBlankWhenNull="true">
+					<reportElement x="531" y="0" width="402" height="24"/>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression class="java.math.BigDecimal"><![CDATA[$V{Total_Advance}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+</jasperReport>

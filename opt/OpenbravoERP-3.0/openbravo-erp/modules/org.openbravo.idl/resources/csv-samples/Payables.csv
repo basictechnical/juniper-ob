@@ -1,0 +1,6 @@
+"Organization","DocumentNo","BusinessPartner","IsReceipt","Currency","PaymentMethod","PaymentDate","FinancialAccount","Project","Campaign","Activity","InvoiceNo","OrderNo","GLItem","Amount"
+"Main","00001","mcgiver","True","EUR","Inmediate","2010-04-24","World Testing Bank",,,,,,"GLItem Test","10"
+"Main","00001","mafalda","True","EUR","Inmediate","2010-04-24","World Testing Bank",,,,,,"GLItem Test","20"
+"Main","00001","obelix","True","EUR","15 days","2010-04-24","World Testing Bank",,,,,,"GLItem Test","30"
+"Main",,"sailor","True","USD","15 days","2010-04-24","Customer National Testing Bank",,,,,,"GLItem Test","40"
+"Main",,"simpsons","True","USD","1 month","2010-04-24","Customer National Testing Bank",,,,,,"GLItem Test","50"

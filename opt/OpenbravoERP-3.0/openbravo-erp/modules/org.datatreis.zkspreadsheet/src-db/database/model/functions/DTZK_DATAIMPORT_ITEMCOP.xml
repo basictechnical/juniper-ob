@@ -1,0 +1,225 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTZK_DATAIMPORT_ITEMCOP">
+    <function name="DTZK_DATAIMPORT_ITEMCOP" type="NUMERIC">
+      <parameter name="p_coptotal" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_copdocumentno" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_itemcode" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_itemdesc" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_copbasic" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_coppercentage" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_copqty" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_copamt" type="NUMERIC" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_bookname" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_order_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[/*************************************************************************
+* The contents of this file are subject to the Openbravo  Public  License
+* Version  1.1  (the  "License"),  being   the  Mozilla   Public  License
+* Version 1.1  with a permitted attribution clause; you may not  use this
+* file except in compliance with the License. You  may  obtain  a copy of
+* the License at http://www.openbravo.com/legal/license.html
+* Software distributed under the License  is  distributed  on  an "AS IS"
+* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+* License for the specific  language  governing  rights  and  limitations
+* under the License.
+* The Original Code is Openbravo ERP.
+* The Initial Developer of the Original Code is Openbravo SLU
+* All portions are Copyright (C) 2008-2009 Openbravo SLU
+* All Rights Reserved.
+* Contributor(s):  ______________________________________.
+************************************************************************/      
+
+  v_countschemas INTEGER:=1; 
+  v_parent_id ad_treenode.parent_id%TYPE;
+  v_node_id ad_treenode.parent_id%TYPE;
+v_clientID varchar(32);
+ v_orgID varchar(32); 
+  cur_org_le RECORD;
+  v_rowid NUMBER;
+  v_data varchar(255);
+  v_columnid NUMBER;
+  v_maindata varchar(255);
+  v_dataexsists NUMBER;
+  v_MData NUMBER;
+  v_SData NUMBER;
+  v_contractamt NUMBER(10,2);
+  v_userID varchar(32);
+  v_count NUMBER:=0;
+  v_contractcopID character varying(32);
+  v_sumcopvalue NUMBER(10,2);
+  v_contractboqfileID  character varying(32);
+  v_getuuid1 character varying(32);
+  v_getuuid2 character varying(32);
+  v_pocopfile_id character varying(32);
+  v_copno character varying(32);
+  v_copdocexsists character varying(60);
+  v_orderline_id NUMBER;
+  v_filetype character varying(60);
+  v_advancetype character varying(60);
+  v_paymenttype character varying(60);
+  cur_grndata record;
+  cur_cummulativedata record;
+  v_copamount NUMBER;
+  vp_itemdesc character varying (255);
+  vp_order_id character varying(32);
+  v_recoverable NUMBER;
+BEGIN
+		vp_itemdesc:=p_itemdesc;
+		vp_order_id := p_order_id;
+		select dtpo_pocopfile_id,ad_client_id,ad_org_id,createdby,paymenttype,advancetype into v_pocopfile_id,v_clientID,v_orgID,v_userID,v_paymenttype,v_advancetype
+		from dtpo_pocopfile where c_order_id=p_order_id and filename = p_bookname;
+		                select count(c_orderline_id) into v_orderline_id from c_orderline 
+		         	join m_product on m_product.m_product_id=c_orderline.m_product_id 
+		         	    	where m_product.value=p_itemcode and c_order_id=p_order_id;
+		          
+		--if(v_pocopfile_id is not null) Then
+			select copno,filetype,paymenttype,advancetype into v_copdocexsists,v_filetype,v_paymenttype,v_advancetype from dtpo_pocopfile 
+			where dtpo_pocopfile_id=v_pocopfile_id;
+			raise notice '%','itm desc'||p_itemdesc;
+		--	IF(v_copdocexsists is null) THEN
+		         	for cur_grndata IN(
+
+			select coalesce(sum(movementqty),0) as grnqty,coalesce(qtyordered,0) as orderqty,c_orderline.c_orderline_id,c_orderline.linenetamt,
+			m_product.name,m_attributesetinstance.description
+			from c_orderline
+			left join m_inoutline on m_inoutline.c_orderline_id=c_orderline.c_orderline_id
+			left join m_product on m_product.m_product_id=c_orderline.m_product_id
+			left join m_attributesetinstance on  m_attributesetinstance.m_attributesetinstance_id = c_orderline.m_attributesetinstance_id
+			where c_order_id=vp_order_id and m_attributesetinstance.description=vp_itemdesc
+			and c_orderline.c_orderline_id is not null group by orderqty,c_orderline.c_orderline_id,linenetamt,
+			m_product.name,m_attributesetinstance.description )  LOOP
+				 if(v_paymenttype='RAP') THEN
+					
+					select count(*) into v_recoverable from dtpo_pocopfile where dtpo_pocopfile_id=v_pocopfile_id and paymenttype='AC' and advancetype='RC';
+				        if(v_recoverable >0 ) THEN
+					
+					for cur_cummulativedata IN (
+					select DISTINCT   coalesce(sum(copamt),0) as certifiedcopamt, searchkey,coalesce(sum(productqty),0) as certifiedcopqty,
+					attributename,coalesce(sum(coppercentage),0) as coppercentage from dtpo_itemcop 
+					left join dtpo_pocopfile on dtpo_pocopfile.dtpo_pocopfile_id=dtpo_itemcop.dtpo_pocopfile_id
+					where c_orderline_id =cur_grndata.c_orderline_id and paymenttype='AC' and advancetype ='RC' and attributename= vp_itemdesc
+					group by attributename,searchkey
+					order by searchkey) LOOP
+					raise notice '%','certifiedcopamt'||p_copamt - cur_cummulativedata.certifiedcopamt;
+					--v_copamount :=p_copamt - cur_cummulativedata.certifiedcopamt;
+					raise notice '%','c_orderline'||cur_grndata.c_orderline_id;
+
+					update dtpo_pocopfile set copamount=p_coptotal,copno=p_copdocumentno where dtpo_pocopfile_id=v_pocopfile_id;
+					INSERT INTO dtpo_itemcop(
+					dtpo_itemcop_id, dtpo_pocopfile_id, ad_client_id, ad_org_id, 
+					isactive, created, createdby, updated, updatedby, productname, attributename,grnquantity,totalquantity,
+					productqty, copamt,c_orderline_id,searchkey,coppercentage,damaged_returned,balancecopamt,Totallineamt,Certfdcopamt)
+					VALUES (get_uuid(), v_pocopfile_id, v_clientID, v_orgID, 
+					'Y', now(), v_userID, now(), v_userID, cur_grndata.name,cur_grndata.description,cur_grndata.grnqty,cur_grndata.orderqty,
+					p_copqty,p_copamt- (p_copamt*cur_cummulativedata.coppercentage)/100,
+					cur_grndata.c_orderline_id,p_itemcode,p_coppercentage,(select coalesce(sum(productqty),0) from dtpo_itemcop
+					 where attributename = p_itemdesc and c_orderline_id=cur_grndata.c_orderline_id),
+					 cur_grndata.linenetamt - (cur_cummulativedata.certifiedcopamt + p_copamt - 
+					 (p_copamt*cur_cummulativedata.coppercentage)/100),
+					 cur_grndata.linenetamt,cur_cummulativedata.certifiedcopamt);
+							
+					END LOOP;				
+						else 
+						
+					for cur_cummulativedata IN (
+					select DISTINCT   coalesce(sum(copamt),0) as certifiedcopamt, searchkey,coalesce(sum(productqty),0) as certifiedcopqty,
+					attributename,coalesce(sum(coppercentage),0) as coppercentage from dtpo_itemcop 
+					left join dtpo_pocopfile on dtpo_pocopfile.dtpo_pocopfile_id=dtpo_itemcop.dtpo_pocopfile_id
+					where c_orderline_id =cur_grndata.c_orderline_id and paymenttype='AC' and advancetype ='NRC' and attributename= vp_itemdesc
+					group by attributename,searchkey
+					order by searchkey) LOOP
+					raise notice '%','certifiedcopamt'||p_copamt - cur_cummulativedata.certifiedcopamt;
+					--v_copamount :=p_copamt - cur_cummulativedata.certifiedcopamt;
+					raise notice '%','c_orderline'||cur_grndata.c_orderline_id;
+
+					update dtpo_pocopfile set copamount=p_coptotal,copno=p_copdocumentno where dtpo_pocopfile_id=v_pocopfile_id;
+					INSERT INTO dtpo_itemcop(
+					dtpo_itemcop_id, dtpo_pocopfile_id, ad_client_id, ad_org_id, 
+					isactive, created, createdby, updated, updatedby, productname, attributename,grnquantity,totalquantity,
+					productqty, copamt,c_orderline_id,searchkey,coppercentage,damaged_returned,balancecopamt,Totallineamt,Certfdcopamt)
+					VALUES (get_uuid(), v_pocopfile_id, v_clientID, v_orgID, 
+					'Y', now(), v_userID, now(), v_userID, cur_grndata.name,cur_grndata.description,cur_grndata.grnqty,cur_grndata.orderqty,
+					p_copqty,p_copamt,
+					cur_grndata.c_orderline_id,p_itemcode,p_coppercentage,(select coalesce(sum(productqty),0) from dtpo_itemcop
+					 where attributename = p_itemdesc and c_orderline_id=cur_grndata.c_orderline_id),
+					 p_copamt ,
+					 cur_grndata.linenetamt,cur_cummulativedata.certifiedcopamt);
+							
+					END LOOP;
+						end if;
+					
+			              else
+			              
+				       update dtpo_pocopfile set copamount=p_coptotal,copno=p_copdocumentno where dtpo_pocopfile_id=v_pocopfile_id;
+				       INSERT INTO dtpo_itemcop(
+				       dtpo_itemcop_id, dtpo_pocopfile_id, ad_client_id, ad_org_id, 
+				       isactive, created, createdby, updated, updatedby, productname, attributename,grnquantity,totalquantity,
+				       productqty, copamt,c_orderline_id,searchkey,coppercentage,Totallineamt,Certfdcopamt,balancecopamt,damaged_returned)
+				       VALUES (get_uuid(), v_pocopfile_id, v_clientID, v_orgID, 
+				       'Y', now(), v_userID, now(), v_userID, cur_grndata.name,cur_grndata.description,cur_grndata.grnqty,cur_grndata.orderqty,
+				       p_copqty, p_copamt,
+				       cur_grndata.c_orderline_id,p_itemcode,p_coppercentage,cur_grndata.linenetamt,0,cur_grndata.linenetamt - p_copamt,0);
+			 
+			 end if;--RAP if
+ 
+			
+			END LOOP;
+				return 0;
+		/*	
+		       else IF(v_copdocexsists = p_copdocumentno) THEN
+		       
+			update dtpo_pocopfile set copamount=p_coptotal,copno=p_copdocumentno where dtpo_pocopfile_id=v_pocopfile_id;
+				for cur_grndata IN(select coalesce(sum(movementqty),0) as grnqty,coalesce(qtyordered,0) as orderqty,c_orderline.c_orderline_id,
+				m_product.name,m_attributesetinstance.description
+			from c_orderline
+			left join m_inoutline on m_inoutline.c_orderline_id=c_orderline.c_orderline_id
+			left join m_product on m_product.m_product_id=c_orderline.m_product_id
+			left join m_attributesetinstance on  m_attributesetinstance.m_attributesetinstance_id = c_orderline.m_attributesetinstance_id
+			where c_order_id=(select c_order_id from c_order where c_order_id=p_order_id) and m_attributesetinstance.description=p_itemdesc
+			 and c_orderline.c_orderline_id is not null group by orderqty,c_orderline.c_orderline_id,
+			m_product.name,m_attributesetinstance.description ) LOOP
+
+			Delete from dtpo_itemcop where dtpo_pocopfile_id=v_pocopfile_id and productname=p_itemcode::text and productqty=p_copqty and 
+			copamt=p_copamt and attributename=cur_grndata.description;
+
+			INSERT INTO dtpo_itemcop(
+				dtpo_itemcop_id, dtpo_pocopfile_id, ad_client_id, ad_org_id, 
+				isactive, created, createdby, updated, updatedby, productname,grnquantity,totalquantity,
+				productqty, copamt,attributename,c_orderline_id,searchkey,coppercentage)
+			VALUES (get_uuid(), v_pocopfile_id, v_clientID, v_orgID, 
+				'Y', now(), v_userID, now(), v_userID, cur_grndata.name, cur_grndata.grnqty,cur_grndata.orderqty,
+				p_copqty, p_copamt, cur_grndata.description,
+			        cur_grndata.c_orderline_id,p_itemcode::text,p_coppercentage);
+
+			END LOOP;
+			
+				return 0;
+			END IF;*/
+			--end if;
+		--else       
+                
+		return 0;
+		--end if;
+END DTZK_DATAIMPORT_ITEMCOP
+]]></body>
+    </function>
+  </database>

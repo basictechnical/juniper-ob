@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+  <database name="TRIGGER DTPO_ITEMCOPORDERLINE_TRG">
+    <trigger name="DTPO_ITEMCOPORDERLINE_TRG" table="C_ORDERLINE" fires="after" insert="true" update="true" delete="false" foreach="row">
+      <body><![CDATA[
+  
+v_check CHAR(1);
+v_reqqty NUMBER;
+v_pendingqty NUMBER;
+v_orderqty NUMBER;
+  CurInstance RECORD;
+v_ReqID varchar(32);
+   v_count NUMBER;   
+   v_sum NUMBER;  
+   v_searhkey varchar(32);
+   v_desc text;
+   v_orderLineID varchar(32);
+   v_orderID varchar(32);
+BEGIN
+    
+    IF AD_isTriggerEnabled()='N' THEN RETURN;
+    END IF;
+    IF(UPDATING OR INSERTING) THEN
+         v_ReqID:=:new.c_orderline_id;
+         v_orderID:=:new.c_order_id;	
+         --raise exception '%','v_ReqID '||v_ReqID||'v_orderID '||v_orderID;
+         select m_product.value,m_attributesetinstance.description into v_searhkey,v_desc from c_orderline
+			left join m_product on m_product.m_product_id=c_orderline.m_product_id
+			right join m_attributesetinstance on  m_attributesetinstance.m_attributesetinstance_id = c_orderline.m_attributesetinstance_id
+			where c_orderline_id=v_ReqID ;
+			update dtpo_itemcop  set c_orderline_id = v_ReqID from dtpo_pocopfile B
+			where B.dtpo_pocopfile_id=dtpo_itemcop.dtpo_pocopfile_id and searchkey = v_searhkey and attributename = v_desc and B.c_order_id=v_orderID;
+
+    END IF;
+
+
+END DTPO_ITEMCOPORDERLINE_TRG
+]]></body>
+    </trigger>
+  </database>

@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+  <vector>
+    <columnDataChange tablename="AD_TAB" columnname="DISABLE_PARENT_KEY_PROPERTY" pkRow="594C3AD27237438A875202E9E5C29EEF">
+      <oldValue/>
+      <newValue><![CDATA[N]]></newValue>
+    </columnDataChange>
+    <columnDataChange tablename="AD_TAB" columnname="DISABLE_PARENT_KEY_PROPERTY" pkRow="884860D303934BB68E23849B1FFA7B69">
+      <oldValue/>
+      <newValue><![CDATA[N]]></newValue>
+    </columnDataChange>
+    <columnDataChange tablename="AD_TAB" columnname="DISABLE_PARENT_KEY_PROPERTY" pkRow="E6A83361201B4261B9EF57BE4A62D1C6">
+      <oldValue/>
+      <newValue><![CDATA[N]]></newValue>
+    </columnDataChange>
+    <columnDataChange tablename="AD_TABLE" columnname="DATAORIGINTYPE" pkRow="237AE8134C5D4150ACCF039616BEF91F">
+      <oldValue/>
+      <newValue><![CDATA[Table]]></newValue>
+    </columnDataChange>
+    <columnDataChange tablename="AD_TABLE" columnname="ISTREE" pkRow="237AE8134C5D4150ACCF039616BEF91F">
+      <oldValue/>
+      <newValue><![CDATA[N]]></newValue>
+    </columnDataChange>
+    <columnDataChange tablename="AD_TABLE" columnname="DATAORIGINTYPE" pkRow="612135878589492889FBED6B5FFFD8D1">
+      <oldValue/>
+      <newValue><![CDATA[Table]]></newValue>
+    </columnDataChange>
+    <columnDataChange tablename="AD_TABLE" columnname="ISTREE" pkRow="612135878589492889FBED6B5FFFD8D1">
+      <oldValue/>
+      <newValue><![CDATA[N]]></newValue>
+    </columnDataChange>
+    <columnDataChange tablename="AD_TABLE" columnname="DATAORIGINTYPE" pkRow="C112B809F61B4DB9919F93BAFDFE8E09">
+      <oldValue/>
+      <newValue><![CDATA[Table]]></newValue>
+    </columnDataChange>
+    <columnDataChange tablename="AD_TABLE" columnname="ISTREE" pkRow="C112B809F61B4DB9919F93BAFDFE8E09">
+      <oldValue/>
+      <newValue><![CDATA[N]]></newValue>
+    </columnDataChange>
+  </vector>

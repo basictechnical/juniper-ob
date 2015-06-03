@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+  <database name="TRIGGER PC_CHKDOCUMENTNO">
+    <trigger name="PC_CHKDOCUMENTNO" table="M_REQUISITIONLINE" fires="after" insert="true" update="true" delete="false" foreach="row">
+      <body><![CDATA[
+  
+v_check CHAR(1);
+v_reqqty NUMBER;
+v_pendingqty NUMBER;
+v_orderqty NUMBER;
+  CurInstance RECORD;
+v_ReqID varchar(32);
+   v_count NUMBER;   
+   v_sum NUMBER; 
+   v_ReqlineID  varchar(32);
+BEGIN
+    
+    IF AD_isTriggerEnabled()='N' THEN RETURN;
+    END IF;
+    IF(UPDATING) THEN
+
+	  --Raise Exception '%', v_ReqID;
+	
+           select count (*) into v_count from m_requisitionline 
+           join m_requisition on m_requisitionline.m_requisition_id=m_requisition.m_requisition_id
+           where m_requisitionline.m_requisition_id= :new.m_requisition_id and em_pc_check='N';
+            --Raise Exception '%', v_count;
+
+            -- Raise Exception '%', v_sum;
+		--Raise Exception '%', 'v_pendingqty'||v_pendingqty||'v_reqqty'||v_reqqty;
+
+		IF(v_count = 0) THEN
+		
+                   -- Raise Exception '%', v_reqqty;
+		
+			update m_requisition  set em_pc_ischeck= 'Y' where m_requisition.m_requisition_id=:new.m_requisition_id;
+
+		
+		
+		else IF(v_count > 0) THEN
+		
+
+			update m_requisition  set em_pc_ischeck= 'N' where m_requisition.m_requisition_id=:new.m_requisition_id;
+          
+                           
+		END IF;
+		
+                  END IF;
+
+
+END IF;
+
+
+END PC_CHKDOCUMENTNO
+]]></body>
+    </trigger>
+  </database>

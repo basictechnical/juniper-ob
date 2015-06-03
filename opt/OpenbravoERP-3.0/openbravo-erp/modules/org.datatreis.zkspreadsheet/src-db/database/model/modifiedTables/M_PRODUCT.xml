@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+  <database name="MODIFIED TABLE M_PRODUCT">
+    <table name="M_PRODUCT" primaryKey="M_PRODUCT_KEY">
+      <column name="EM_DTZK_MAKE" primaryKey="false" required="false" type="VARCHAR" size="60" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_DTZK_MODEL" primaryKey="false" required="false" type="VARCHAR" size="60" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_DTZK_HSNCODE" primaryKey="false" required="false" type="VARCHAR" size="60" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_DTZK_COUNTRYORIGIN" primaryKey="false" required="false" type="VARCHAR" size="60" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_DTZK_PORTLOADING" primaryKey="false" required="false" type="VARCHAR" size="60" autoIncrement="false">
+        <default/>
+        <onCreateDefault/>
+      </column>
+    </table>
+  </database>

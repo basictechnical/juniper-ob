@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTPO_CERTIFIEDINVENTORY">
+    <function name="DTPO_CERTIFIEDINVENTORY" type="NULL">
+      <parameter name="pinstance_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[-- Parameter
+  TYPE RECORD IS REF CURSOR;
+      
+    v_Record_ID VARCHAR(32); 
+    v_grandtotal NUMBER;
+    Cur_Parameter RECORD;
+    CurSetInstance RECORD;
+    v_status VARCHAR(6); 
+    v_ResultStr VARCHAR(300) ;
+    v_plaindoc varchar(255);
+    v_sumQtyOrderline NUMBER;
+    v_comparecount NUMBER;
+    v_sumQtyReqOrderLine NUMBER;
+    v_diffqty NUMBER;
+    v_USER VARCHAR(32); 
+    V_message VARCHAR(300) :='';
+    v_Result NUMBER:=1;
+    v_C_Order_ID character varying(32);
+    v_Dtpo_Pocopfile_ID character varying(32);
+    
+       BEGIN
+    --  Update AD_PInstance
+    --  DBMS_OUTPUT.PUT_LINE('Updating PInstance - Processing');
+    --RAISE_APPLICATION_ERROR(-20000, 'procedur calling');
+    v_ResultStr:='PInstanceNotFound';
+    AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'Y', NULL, NULL) ;
+  BEGIN --BODY
+    -- Get Parameters
+    v_ResultStr:='ReadingParameters';
+    FOR Cur_Parameter IN
+      (SELECT i.Record_ID,
+        p.ParameterName,
+        p.P_String,
+        p.P_Number,
+        p.P_Date,
+        i.createdBy
+      FROM AD_PInstance i
+      LEFT JOIN AD_PInstance_Para p
+        ON i.AD_PInstance_ID=p.AD_PInstance_ID
+      WHERE i.AD_PInstance_ID=PInstance_ID
+      ORDER BY p.SeqNo
+      )
+    LOOP
+     
+            v_Record_ID := Cur_Parameter.Record_ID;
+              IF(Cur_Parameter.ParameterName='C_Order_ID') THEN
+                              v_C_Order_ID:=Cur_Parameter.P_String;
+              ELSIF(Cur_Parameter.ParameterName='Dtpo_Pocopfile_ID') THEN
+			      v_Dtpo_Pocopfile_ID:=Cur_Parameter.P_String;
+		--raise exception '%','sdf'||v_Dtpo_Pocopfile_ID;
+
+              END IF;
+    end loop;
+    
+    BEGIN
+   AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 1, NULL);
+
+          -- raise exception '%','v_Dtpo_Pocopfile_IDid '||v_Dtpo_Pocopfile_ID;
+			FOR CurSetInstance IN(select c_orderline.m_product_id,c_orderline.c_orderline_id,
+			dtpo_itemcop.productqty,c_orderline.c_uom_id,c_orderline.ad_client_id,c_orderline.ad_org_id,dtpo_itemcop.createdby,
+			c_order.c_project_id,m_locator.m_locator_id
+                        from dtpo_itemcop join c_orderline on c_orderline.c_orderline_id=dtpo_itemcop.c_orderline_id
+                        join c_order on c_order.c_order_id=c_orderline.c_order_id
+                        join m_locator on m_locator.m_warehouse_id=c_order.m_warehouse_id
+                         where dtpo_itemcop.dtpo_pocopfile_id=v_Dtpo_Pocopfile_ID) LOOP
+
+                         
+			INSERT INTO m_inoutline(
+					m_inoutline_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+					updated, updatedby, line, description, m_inout_id, c_orderline_id, 
+					m_locator_id, m_product_id, c_uom_id, movementqty,
+					c_project_id)
+			VALUES (get_uuid(),CurSetInstance.ad_client_id,CurSetInstance.ad_org_id,'Y',now(),CurSetInstance.createdby,
+					now(),CurSetInstance.createdby,10,'test',v_Record_ID,CurSetInstance.c_orderline_id,
+					CurSetInstance.m_locator_id,CurSetInstance.m_product_id,CurSetInstance.c_uom_id,
+					CurSetInstance.productqty,CurSetInstance.c_project_id);
+					
+
+
+        END LOOP;
+     
+
+	update dtpo_pocopfile set isgrncompleted='Y' where dtpo_pocopfile_id=v_Dtpo_Pocopfile_ID;
+
+/*
+    INSERT INTO m_inoutline(
+            m_inoutline_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+            updated, updatedby, line, description, m_inout_id, c_orderline_id, 
+            m_locator_id, m_product_id, c_uom_id, movementqty,
+            c_project_id)
+    VALUES (?);
+
+*/
+
+    --raise exception '@dtpo_dummymsg@';
+   --RETURN;
+  END; --BODY
+EXCEPTION
+WHEN OTHERS THEN
+   v_ResultStr:= '@ERROR=' || SQLERRM;
+
+
+  
+  AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', v_Result, v_ResultStr);
+ END;
+  --RETURN;
+END DTPO_CERTIFIEDINVENTORY
+]]></body>
+    </function>
+  </database>

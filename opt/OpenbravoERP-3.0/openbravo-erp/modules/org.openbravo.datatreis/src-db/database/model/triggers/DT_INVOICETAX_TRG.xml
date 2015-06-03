@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+  <database name="TRIGGER DT_INVOICETAX_TRG">
+    <trigger name="DT_INVOICETAX_TRG" table="C_INVOICELINE" fires="before" insert="true" update="true" delete="true" foreach="row">
+      <body><![CDATA[  v_tax_name VARCHAR(100);
+  v_list_ref_taxname VARCHAR(60);
+   
+BEGIN 
+
+  
+IF INSERTING OR UPDATING  THEN
+
+select name into v_tax_name from c_tax where c_tax_id=:NEW.c_tax_id;
+
+IF(v_tax_name='ED12.36%+CST') THEN
+v_list_ref_taxname:='CST';
+ELSIF(v_tax_name='Excise Duty + VAT 5%') THEN
+v_list_ref_taxname:='VAT';
+ELSE
+v_list_ref_taxname:='NO';
+END IF;
+update c_invoice set em_dt_taxname=v_list_ref_taxname where c_invoice_id=:new.c_invoice_id;
+
+END IF;
+
+
+END DT_INVOICETAX_TRG
+]]></body>
+    </trigger>
+  </database>

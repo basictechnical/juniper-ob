@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<data>
+<!--0738F23111D044FCBB03B4CE50B27D47--><OBCQL_WIDGET_QUERY>
+<!--0738F23111D044FCBB03B4CE50B27D47-->  <OBCQL_WIDGET_QUERY_ID><![CDATA[0738F23111D044FCBB03B4CE50B27D47]]></OBCQL_WIDGET_QUERY_ID>
+<!--0738F23111D044FCBB03B4CE50B27D47-->  <AD_CLIENT_ID><![CDATA[0]]></AD_CLIENT_ID>
+<!--0738F23111D044FCBB03B4CE50B27D47-->  <AD_ORG_ID><![CDATA[0]]></AD_ORG_ID>
+<!--0738F23111D044FCBB03B4CE50B27D47-->  <ISACTIVE><![CDATA[Y]]></ISACTIVE>
+<!--0738F23111D044FCBB03B4CE50B27D47-->  <OBKMO_WIDGET_CLASS_ID><![CDATA[EF488BE6B43641C48CBF24083E6204D6]]></OBKMO_WIDGET_CLASS_ID>
+<!--0738F23111D044FCBB03B4CE50B27D47-->  <HQL><![CDATA[select org.name as org,o.documentNo as pono,bp.name as bpartner,pr.name as project,p.searchKey as searchkey,ol.attributeSetValue.description as product,sum(ol.lineNetAmount) as price from OrderLine ol left join ol.product p left join ol.salesOrder o left join o.businessPartner bp left join o.project pr left join o.organization org where UPPER(p.name) LIKE UPPER((:pname)) group by o.documentNo,bp.name,pr.name,p.searchKey,org.name,p.name,ol.attributeSetValue.description order by o.documentNo]]></HQL>
+<!--0738F23111D044FCBB03B4CE50B27D47-->  <TYPE><![CDATA[HQL]]></TYPE>
+<!--0738F23111D044FCBB03B4CE50B27D47--></OBCQL_WIDGET_QUERY>
+
+</data>

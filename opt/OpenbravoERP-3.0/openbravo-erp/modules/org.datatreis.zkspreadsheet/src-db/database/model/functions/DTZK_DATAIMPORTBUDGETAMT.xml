@@ -1,0 +1,266 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION DTZK_DATAIMPORTBUDGETAMT">
+    <function name="DTZK_DATAIMPORTBUDGETAMT" type="NULL">
+      <parameter name="p_projectid" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="v_itemcode" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_targetamount" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_potentialamt" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_uncommitedcost" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_forecasttotal" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_costsqft" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <parameter name="p_workdone" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[/*************************************************************************
+* The contents of this file are subject to the Openbravo  Public  License
+* Version  1.1  (the  "License"),  being   the  Mozilla   Public  License
+* Version 1.1  with a permitted attribution clause; you may not  use this
+* file except in compliance with the License. You  may  obtain  a copy of
+* the License at http://www.openbravo.com/legal/license.html
+* Software distributed under the License  is  distributed  on  an "AS IS"
+* basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the
+* License for the specific  language  governing  rights  and  limitations
+* under the License.
+* The Original Code is Openbravo ERP.
+* The Initial Developer of the Original Code is Openbravo SLU
+* All portions are Copyright (C) 2008-2009 Openbravo SLU
+* All Rights Reserved.
+* Contributor(s):  ______________________________________.
+************************************************************************/      
+
+  v_countschemas INTEGER:=1; 
+  v_parent_id ad_treenode.parent_id%TYPE;
+  v_node_id ad_treenode.parent_id%TYPE;
+  v_clientID varchar(32);
+  v_orgID varchar(32); 
+  
+  
+  v_userID varchar(32);
+ v_mainsectionID varchar(32);
+ v_count NUMBER;
+ v_3digit99count NUMBER:=0;
+ v_5digit99count NUMBER;
+ v_7digit99count NUMBER:=0;
+ v_subsectionID varchar(32);
+ v_taskrowid NUMBER;
+ v_subtaskID varchar(32);
+ v_sub varchar(32);
+ v_subtask varchar(32);
+ v_productCat varchar(32);
+ v_product_categoryID varchar(32);
+ v_taskcolumnid NUMBER;
+ v_2ndbudgetamt NUMBER:=0;
+ v_3rdbudgetamt NUMBER:=0;
+ v_4thbudgetamt NUMBER:=0;
+ v_3digit99budgetamt NUMBER:=0;
+ v_5digit99budgetamt NUMBER:=0;
+ v_7digit99budgetamt NUMBER:=0;
+ v_1stlevel NUMBER:=0;
+ v_2ndlevel NUMBER:=0;
+ v_3rdlevel NUMBER:=0;
+ v_newsubtaskID varchar(32);
+ p_itemCode1 character varying(20);
+ p_itemCode character varying(20);
+ v_costSqft NUMBER:=0;
+ v_targetAmount NUMBER:=0;
+ v_potentialValue NUMBER:=0;
+ v_unCommitted NUMBER:=0;
+ v_foreCostAmount NUMBER:=0;
+ v_workDone NUMBER:=0;
+
+BEGIN
+                  select ad_client_id,ad_org_id,createdby into  v_clientID,v_orgID,v_userID from c_project where c_project_id=p_projectid;
+                  --select trim( trailing  '.' from p_itemCode) into v_itemcode;
+                 -- raise exception '%','v_itemcode'||p_itemCode||'.'||0||'p_itemCode'||p_itemCode;
+                  if(v_itemcode like '%.%') then
+                  select rtrim(v_itemcode, '0') into p_itemCode1;
+                  select rtrim(p_itemCode1, '.') into p_itemCode;
+                  else
+                  p_itemCode:=v_itemcode;
+                  end if;
+                  
+                  select coalesce (epb_mainsection_id,'-') into v_mainsectionID from epb_mainsection  where itemcode||'.'||'0'=p_itemCode or itemcode=p_itemCode;
+                --  raise exception '%','v_mainsectionID'||v_mainsectionID||'p_itemCode'||p_itemCode;
+  select coalesce (epb_subsection_id, '-') into v_subsectionID from epb_subsection where itemcode||'.'||0=p_itemCode or itemcode=p_itemCode
+  group by epb_subsection_id having character_length(p_itemCode)>2 ;
+  select coalesce (epb_subtasks_id, '-') into v_subtaskID from epb_subtasks where itemcode||'.'||0=p_itemCode or itemcode=p_itemCode 
+  group by epb_subtasks_id having character_length(p_itemCode)>3 ;        -- and character_length(p_itemCode)<>3;
+  select coalesce (m_product_category_id, '-') into v_product_categoryID from m_product_category where value||'.'||0=p_itemCode or value=p_itemCode
+  group by m_product_category_id having character_length(p_itemCode)>5;   -- and character_length(p_itemCode)<>3 and character_length(p_itemCode)<>5;
+
+--raise exception '%','length'||v_subtaskID||'item'||p_itemCode;
+--1st level Budget Insert and update start
+
+
+
+v_targetAmount:=trunc(p_targetamount::numeric,2);
+v_costSqft:=trunc(p_costsqft::numeric,2);
+v_potentialValue:=trunc(p_potentialamt::numeric,2);
+v_unCommitted:=trunc(p_uncommitedcost::numeric,2);
+v_foreCostAmount:=trunc(p_forecasttotal::numeric,2);
+v_workDone:=trunc(p_workdone::numeric,2);
+
+if(v_mainsectionID is NOT NULL) then
+--delete from epb_firstlevelbudget where c_project_id = p_projectid
+INSERT INTO epb_firstlevelbudget(
+                            epb_firstlevelbudget_id, ad_client_id, ad_org_id, isactive, created, 
+                            createdby, updated, updatedby, budget_amt, c_project_id, epb_mainsection_id,potentialvariation,
+                            uncommittedcost,forecast_completion,em_jcm_cost_sqft,em_jcm_worktobe_done)
+                VALUES (get_uuid(), v_clientID, v_orgID, 'Y', now(),
+                            v_userID, now(), v_userID,(v_targetAmount::numeric) ,p_projectid ,v_mainsectionID,
+                            v_potentialValue::numeric,v_unCommitted::numeric,v_foreCostAmount::numeric,(v_costSqft::numeric),(v_workDone::numeric));
+   
+end if;
+--1st level Budget Insert and update end
+--2st level Budget Insert and update start TRANSACTION 
+if(v_subsectionID is NOT NULL) then
+
+--delete from epb_secondlevelbudget where c_project_id = p_projectid;
+
+                          select distinct epb_firstlevelbudget.budget_amt into v_1stlevel from epb_mainsection
+  left join epb_firstlevelbudget on epb_firstlevelbudget.epb_mainsection_id=epb_mainsection.epb_mainsection_id
+          where epb_firstlevelbudget.c_project_id = p_projectid and epb_mainsection.itemcode like ((select substring(p_itemCode from 1 for 1))||'%');
+
+  select distinct coalesce (trunc(sum(epb_secondlevelbudget.budget_amt::numeric),2),0) into  v_2ndbudgetamt from epb_subsection
+          left join  epb_secondlevelbudget on epb_secondlevelbudget.epb_subsection_id=epb_subsection.epb_subsection_id
+  where epb_secondlevelbudget.c_project_id = p_projectid and epb_subsection.itemcode like ((select substring(p_itemCode from 1 for 1))||'%')
+  and epb_subsection.itemcode != ((select substring(p_itemCode from 1 for 1))||99);
+
+
+if(v_1stlevel >= (v_2ndbudgetamt+(v_targetAmount::numeric))) then
+--raise exception '%','Insert If Condition';
+
+   INSERT INTO epb_secondlevelbudget(
+                                                          epb_secondlevelbudget_id, ad_client_id, ad_org_id, isactive, 
+                                                          created, createdby, updated, updatedby, budget_amt, epb_subsection_id, 
+                                                          c_project_id,potentialvariation,uncommittedcost,forecast_completion,em_jcm_cost_sqft,em_jcm_worktobe_done)
+  VALUES (get_uuid(), v_clientID, v_orgID, 'Y', now(),
+  v_userID, now(), v_userID,(v_targetAmount::numeric), v_subsectionID, 
+  p_projectid,v_potentialValue::numeric,v_unCommitted::numeric,v_foreCostAmount::numeric
+  ,(v_costSqft::numeric),(v_workDone::numeric));
+
+      else 
+ raise exception '%',''||p_itemCode||'Main Head Amount Exceeded From Master Code Amount '||(select substring(p_itemCode from 1 for 2));
+      end if;     
+
+               
+
+
+select coalesce(epb_subsection_id,'-') into v_sub from epb_subsection where  epb_subsection.itemcode=(select substring(p_itemCode from 1 for 1))||99;
+   if(v_sub <> '') then
+   INSERT INTO epb_secondlevelbudget(
+                                                          epb_secondlevelbudget_id, ad_client_id, ad_org_id, isactive, 
+                                                          created, createdby, updated, updatedby, budget_amt, epb_subsection_id, 
+                                                          c_project_id)
+                                           VALUES (get_uuid(), v_clientID, v_orgID, 'Y', now(),
+ v_userID, now(), v_userID,v_1stlevel-(v_2ndbudgetamt+(v_targetAmount::numeric)), v_sub, 
+p_projectid);
+
+
+
+end if;
+end if;
+--2st level Budget Insert and update end 
+if(v_subtaskID is NOT NULL) then
+--delete from epb_thirdlevelbudget where c_project_id = p_projectid;
+                        -- raise exception '%','v_2ndlevel';
+select distinct epb_secondlevelbudget.budget_amt into v_2ndlevel from epb_subsection
+LEFT join epb_secondlevelbudget on epb_secondlevelbudget.epb_subsection_id=epb_subsection.epb_subsection_id
+where epb_secondlevelbudget.c_project_id = p_projectid and epb_subsection.itemcode=(select substring(p_itemCode from 1 for 3)) ;
+
+select distinct coalesce (trunc(sum(epb_thirdlevelbudget.budget_amt::numeric),2),0) into  v_3rdbudgetamt from epb_subtasks
+left join  epb_thirdlevelbudget on epb_thirdlevelbudget.epb_subtasks_id=epb_subtasks.epb_subtasks_id
+where epb_thirdlevelbudget.c_project_id = p_projectid and epb_subtasks.itemcode like ((select substring(p_itemCode from 1 for 3))||'%')
+and epb_subtasks.itemcode != ((select substring(p_itemCode from 1 for 3))||99);
+if(v_2ndlevel >= (v_3rdbudgetamt+(v_targetAmount::numeric))) then
+INSERT INTO epb_thirdlevelbudget(
+epb_thirdlevelbudget_id, ad_client_id, ad_org_id, isactive, created, 
+createdby, updated, updatedby, budget_amt, epb_subtasks_id, c_project_id,potentialvariation,uncommittedcost,
+forecast_completion,em_jcm_cost_sqft,em_jcm_worktobe_done)
+VALUES (get_uuid(), v_clientID, v_orgID, 'Y', now(),
+v_userID, now(), v_userID, (v_targetAmount::numeric),v_subtaskID, p_projectid,v_potentialValue::numeric,v_unCommitted::numeric,
+v_foreCostAmount::numeric,(v_costSqft::numeric),(v_workDone::numeric));
+else
+raise exception '%',''||p_itemCode||' Sub Head Amount Exceeded From Main Head Amount '||(select substring(p_itemCode from 1 for 3));
+end if; 
+                       
+                        --raise exception '%','p_itemCode'||p_itemCode;
+select  coalesce(epb_subtasks_id,'-') into v_subtask from epb_subtasks where  epb_subtasks.itemcode=((select substring(p_itemCode from 1 for 3))||99);
+if(v_subtask <>  '') then
+INSERT INTO epb_thirdlevelbudget(
+epb_thirdlevelbudget_id, ad_client_id, ad_org_id, isactive, created, 
+createdby, updated, updatedby, budget_amt, epb_subtasks_id, c_project_id)
+VALUES (get_uuid(), v_clientID, v_orgID, 'N', now(),
+v_userID, now(), v_userID, v_2ndlevel-(v_3rdbudgetamt+(v_targetAmount::numeric)),v_subtask, p_projectid);
+                                          
+ 
+
+end if;
+end if;
+
+if(v_product_categoryID is NOT NULL) then
+                       -- raise exception '%','v_3rdlevel :'||p_itemCode;
+--delete from epb_fourthlevelbgt where c_project_id = p_projectid;
+select distinct epb_thirdlevelbudget.budget_amt into v_3rdlevel from epb_subtasks
+left join epb_thirdlevelbudget on epb_thirdlevelbudget.epb_subtasks_id=epb_subtasks.epb_subtasks_id
+where epb_thirdlevelbudget.c_project_id = p_projectid and epb_subtasks.itemcode=(select substring(p_itemCode from 1 for 5));
+
+                       -- raise exception '%','v_3rdlevel :'||v_3rdlevel;
+
+select distinct coalesce (trunc(sum(epb_fourthlevelbgt.budget_amt::numeric),2),0) into  v_4thbudgetamt from m_product_category
+left join  epb_fourthlevelbgt on epb_fourthlevelbgt.m_product_category_id=m_product_category.m_product_category_id
+where epb_fourthlevelbgt.c_project_id = p_projectid and m_product_category.value like ((select substring(p_itemCode from 1 for 5))||'%')
+and m_product_category.value != ((select substring(p_itemCode from 1 for 5))||99); 
+
+
+
+                                if(v_3rdlevel >= (v_4thbudgetamt+(v_targetAmount::numeric))) then 
+                                   INSERT INTO epb_fourthlevelbgt(
+epb_fourthlevelbgt_id, ad_client_id, ad_org_id, isactive, created, 
+createdby, updated, updatedby, budget_amt,  c_project_id, 
+m_product_category_id,em_jcm_cost_sqft,em_jcm_worktobe_done)
+                                   VALUES (get_uuid(), v_clientID, v_orgID, 'Y', now(),
+                                          v_userID, now(), v_userID, (v_targetAmount::numeric),p_projectid, 
+                                                        v_product_categoryID, (v_costSqft::numeric), (v_workDone::numeric));
+                                else
+raise exception '%',''||p_itemCode||' Cost Code Amount Exceeded From Sub Head Amount '||(select substring(p_itemCode from 1 for 5));
+
+                                end if;                        
+
+                       
+
+select coalesce(m_product_category_id,'-') into v_productCat from m_product_category where  
+m_product_category.value=(select substring(p_itemCode from 1 for 5))||99;
+if(v_productCat <> '') then
+
+
+INSERT INTO epb_fourthlevelbgt(
+epb_fourthlevelbgt_id, ad_client_id, ad_org_id, isactive, created, 
+createdby, updated, updatedby, budget_amt,  c_project_id, 
+m_product_category_id)
+                                   VALUES (get_uuid(), v_clientID, v_orgID, 'Y', now(),
+                                          v_userID, now(), v_userID,v_3rdlevel-(v_4thbudgetamt+ (v_targetAmount::numeric)),p_projectid, 
+                                                        v_productCat);
+
+
+end if;
+
+end if;
+END DTZK_DATAIMPORTBUDGETAMT
+]]></body>
+    </function>
+  </database>

@@ -1,0 +1,136 @@
+<?xml version="1.0"?>
+  <database name="FUNCTION PC_CREATELINES">
+    <function name="PC_CREATELINES" type="NULL">
+      <parameter name="pinstance_id" type="VARCHAR" mode="in">
+        <default/>
+      </parameter>
+      <body><![CDATA[v_ResultStr VARCHAR2(2000):='';
+  v_Message VARCHAR2(2000):='';
+  v_Record_ID VARCHAR2(32);
+  v_Result NUMBER:=0; -- failure
+  v_AD_User_ID VARCHAR2(32);
+  v_AD_Org_ID VARCHAR2(32);
+  v_AD_Client_ID VARCHAR2(32);
+  v_Req_ID VARCHAR(32);
+  v_Order VARCHAR(32);
+  v_C_Project_ID VARCHAR(32);
+  v_User_ID VARCHAR(32);
+  v_Warehouse VARCHAR(32);
+  v_DateFrom timestamp without time zone;
+  v_Enddate timestamp without time zone;
+  CurInstance RECORD;
+  CurInstance1 RECORD;
+  v_project VARCHAR(32);
+  v_qty NUMBER;
+  -- Parameter
+  TYPE RECORD IS REF CURSOR;
+    Cur_Parameter RECORD;
+    -- Parameter Variables
+    v_M_Requisition_ID VARCHAR2(32);
+    v_Total NUMBER;
+    v_line NUMBER:=0;
+    FINISH_PROCESS BOOLEAN:=false;
+   
+  BEGIN
+      v_ResultStr:='PInstanceNotFound';
+    AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'Y', NULL, NULL) ;
+  BEGIN --BODY
+    -- Get Parameters
+    v_ResultStr:='ReadingParameters';
+    FOR Cur_Parameter IN
+      (SELECT i.Record_ID,i.AD_User_ID,
+        p.ParameterName,
+        p.P_String,
+        p.P_Number,
+        p.P_Date,
+        i.createdBy
+      FROM AD_PInstance i
+      LEFT JOIN AD_PInstance_Para p
+        ON i.AD_PInstance_ID=p.AD_PInstance_ID
+      WHERE i.AD_PInstance_ID=PInstance_ID
+      ORDER BY p.SeqNo
+      )
+    LOOP
+      v_Record_ID:=Cur_Parameter.Record_ID;
+     
+       IF(Cur_Parameter.ParameterName='AD_Org_ID') THEN
+        v_AD_Org_ID:=Cur_Parameter.P_String;
+        END IF;
+        IF(Cur_Parameter.ParameterName='C_Project_ID') THEN
+        v_C_Project_ID:=Cur_Parameter.P_String;
+        END IF; 
+         IF(Cur_Parameter.ParameterName='DateFrom') THEN
+        v_DateFrom:=Cur_Parameter.P_Date;
+        END IF;
+         IF(Cur_Parameter.ParameterName='EndDate') THEN
+        v_Enddate:=Cur_Parameter.P_Date;
+        END IF;
+         --v_C_Project_ID:=Cur_Parameter.C_Project_ID; 
+      IF(Cur_Parameter.ParameterName='M_Requisition_ID') THEN
+        v_M_Requisition_ID:=Cur_Parameter.P_String;
+       
+      END IF;
+    END LOOP; -- Get Parameter
+
+    
+ BEGIN
+      AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', 1, NULL);
+      select m_requisition.m_requisition_id into v_Req_ID from m_requisition where m_requisition.m_requisition_id=v_Record_ID;
+           v_User_ID:=Cur_Parameter.AD_User_ID;
+	select c_order.c_order_id into v_Order from c_order where c_order.c_order_id=v_Record_ID;
+
+	select c_order.m_warehouse_id into v_Warehouse from c_order where c_order.c_order_id=v_Record_ID;
+
+select c_order.c_project_id into v_project from c_order where c_order.c_order_id=v_Record_ID;
+
+ 
+FOR CurInstance IN(
+
+ select m_requisitionline.qty,m_requisitionline.em_pc_pendingqty ,m_requisitionline.m_requisitionline_id,m_requisitionline.line,m_requisitionline.ad_client_id,m_requisitionline.ad_org_id,m_requisitionline.m_product_id,m_requisitionline.c_uom_id,
+m_requisitionline.gross_unit_price,m_requisitionline.gross_amt,m_requisitionline.qty,m_requisitionline.needbydate,
+m_requisitionline.c_currency_id,m_requisitionline.c_uom_id from m_requisitionline
+left join m_requisition on m_requisition.m_requisition_id=m_requisitionline.m_requisition_id
+--left join c_orderline on m_requisitionline.m_requisitionline_id=c_orderline.em_pc_requisitionline_id
+where m_requisitionline.m_requisition_id=v_M_Requisition_ID and m_requisitionline.em_pc_check='N' 
+and m_requisitionline.needbydate between v_DateFrom and v_Enddate  )
+LOOP
+
+
+--RAISE NO_DATA_FOUND||v_Record_ID;
+v_line:=v_line+10;
+
+IF(v_project = v_C_Project_ID ) THEN
+v_qty := CurInstance.Qty-CurInstance.em_pc_pendingqty;
+ --RAISE NO_DATA_FOUND||CurInstance.qty;
+INSERT INTO c_orderline(
+            c_orderline_id, ad_client_id, ad_org_id, isactive, created, createdby, 
+            updated, updatedby, c_order_id,
+            m_product_id, c_uom_id, qtyordered, 
+            gross_unit_price,line_gross_amount,line,dateordered,m_warehouse_id,c_currency_id,c_tax_id,em_pc_requisitionline_id)
+    VALUES (get_uuid(),CurInstance.ad_client_id,CurInstance.ad_org_id, 'Y', now(),v_User_ID, 
+            now(),v_User_ID, v_Record_ID, CurInstance.m_product_id, CurInstance.c_uom_id,v_qty ,
+            CurInstance.gross_unit_price, CurInstance.gross_amt,v_line,CurInstance.needbydate,
+            v_Warehouse,CurInstance.c_currency_id
+            ,'18A499249FF74A68B79510F0AD341141',CurInstance.m_requisitionline_id
+            );
+
+   
+END IF;
+ 
+END LOOP; 
+
+IF(v_project <> v_C_Project_ID ) THEN
+ RAISE NO_DATA_FOUND;
+END IF;
+
+END; 
+EXCEPTION
+WHEN OTHERS THEN
+  --       
+  v_ResultStr:= '@ERROR=' || SQLERRM;
+   AD_UPDATE_PINSTANCE(PInstance_ID, NULL, 'N', v_Result, v_ResultStr);
+ END;
+END PC_CREATELINES
+]]></body>
+    </function>
+  </database>

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+  <database name="MODIFIED TABLE EPB_THIRDLEVELBUDGET">
+    <table name="EPB_THIRDLEVELBUDGET" primaryKey="EPB_THIRDLEVELBUDGET_KEY">
+      <column name="EM_JCM_WORKTOBE_DONE" primaryKey="false" required="false" type="DECIMAL" size="12,2" autoIncrement="false">
+        <default><![CDATA[0]]></default>
+        <onCreateDefault/>
+      </column>
+      <column name="EM_JCM_COST_SQFT" primaryKey="false" required="false" type="DECIMAL" size="10,2" autoIncrement="false">
+        <default><![CDATA[0]]></default>
+        <onCreateDefault/>
+      </column>
+    </table>
+  </database>
