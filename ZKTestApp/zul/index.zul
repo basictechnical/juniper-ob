@@ -1,0 +1,12 @@
+<?page title="Auto Generated index.zul"?>
+	<window title="Hello World!!" border="normal" width="200px">
+	
+	<label value="You are using: ${desktop.webApp.version}"/>
+	<zk>
+	<grid><columns></columns></grid>
+		<calendar>
+		This is a calendar...!!1
+		</calendar>
+	</zk>
+	
+	</window>

@@ -1,0 +1,33 @@
+<?page title="My First ZK Spreadsheet application" contentType="text/html;charset=UTF-8"?>
+<zk>
+	<window vflex="1" width="100%" apply="tutorial.Retrieve">
+		<menubar>
+			<menu label="File">
+				<menupopup>
+					<menuitem label="New" />
+					<menuseparator />
+					<menuitem label="Open" id="openFiles" />
+					<menuseparator />
+					<menuitem label="Save" />
+				</menupopup>
+			</menu>
+			<menu label="Edit">
+				<menupopup>
+					<menuitem label="Cut" />
+					<menuseparator />
+					<menuitem label="Copy" />
+					<menuseparator />
+					<menuitem label="Paste" />
+				</menupopup>
+			</menu>
+			<menuitem label="About" />
+		</menubar>
+		<button id="retrieve" label="Retrieve" />
+		<button id="savetoDb" label="Submit" />
+		<spreadsheet showToolbar="true" id="spreadsheet" vflex="true"
+			width="100%" src="/WEB-INF/xls/empty.xls" maxcolumns="60"
+			maxrows="65000">
+		</spreadsheet>
+	</window>
+
+</zk>

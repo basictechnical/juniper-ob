@@ -1,0 +1,32 @@
+<?page title="My First ZK Spreadsheet application" contentType="text/html;charset=UTF-8"?>
+<zk>
+	<window title="My First ZK Spreadsheet Application" border="normal"
+		vflex="1" width="100%">
+		<menubar>
+			<menu label="File">
+				<menupopup>
+					<menuitem label="New" />
+					<menuseparator />
+					<menuitem label="Open" />
+					<menuseparator />
+					<menuitem label="Save" />
+				</menupopup>
+			</menu>
+			<menu label="Edit">
+				<menupopup>
+					<menuitem label="Cut" />
+					<menuseparator />
+					<menuitem label="Copy" />
+					<menuseparator />
+					<menuitem label="Paste" />
+				</menupopup>
+			</menu>
+			<menuitem label="About" />
+		</menubar>
+				<spreadsheet src="/WEB-INF/xls/empty.xlsx" maxrows="65000"
+			maxcolumns="60" vflex="1" width="100%" showToolbar="true">
+		</spreadsheet>
+	</window>
+</zk>
+
+

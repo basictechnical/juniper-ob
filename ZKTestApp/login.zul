@@ -1,0 +1,29 @@
+<zk>
+    <window title="Login" id="component" border="normal" width="400px"
+        style="margin-top:150px;margin-left:400px;"
+        apply="org.zkoss.zss.app.zul.LoginViewModel" height="180px">
+        <grid>
+            <auxhead>
+                <auxheader label="Login" colspan="2"></auxheader>
+            </auxhead>
+            <columns />
+            <rows>
+                <row>
+                    User Name:
+                    <textbox id="userName" type="text" placeholder="Enter UserName">
+                    </textbox>
+                </row>
+                <row>
+                    PassWord:
+                    <textbox id="passWord" type="password" placeholder="Enter Password"></textbox>
+                </row>
+                <row spans="2" style="text-align:center">
+ 
+                    <button id="login" label="Login"></button>
+ 
+                </row>
+            </rows>
+ 
+        </grid>
+    </window>
+</zk>

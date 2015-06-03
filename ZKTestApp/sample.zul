@@ -1,0 +1,178 @@
+<?page id="testZul" title=" New ZUL Title" cacheable="false" language="xul/html" zscriptLanguage="Java" contentType="text/html"?>
+<?init class="org.zkoss.zkplus.databind.AnnotateDataBinderInit"?>
+<zk xmlns="http://www.zkoss.org/2005/zul"
+	xmlns:h="http://www.w3.org/1999/xhtml"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.zkoss.org/2005/zul http://www.zkoss.org/2005/zul/zul.xsd">
+
+	<window id="paramForm" onCreate="getData();">
+
+		<zscript language="Java">
+{
+	import java.io.ByteArrayOutputStream;
+	import java.io.File;
+	import java.io.FileInputStream;
+	import java.io.FileOutputStream;
+	import java.io.IOException;
+	import java.sql.Connection;
+	import java.sql.DriverManager;
+	import java.sql.PreparedStatement;
+	import java.sql.ResultSet;
+	import java.sql.Statement;
+	import java.util.Iterator;
+	import java.util.Vector;
+	import org.apache.poi.hpsf.HPSFException;
+	import org.zkoss.poi.xssf.usermodel.XSSFCell;
+	import org.zkoss.poi.xssf.usermodel.XSSFRow;
+	import org.zkoss.poi.xssf.usermodel.XSSFSheet;
+	import org.zkoss.poi.xssf.usermodel.XSSFWorkbook;
+	import org.zkoss.zk.ui.Components;
+	import org.zkoss.zk.ui.Executions;
+	import org.zkoss.zk.ui.IdSpace;
+	import org.zkoss.zk.ui.UiException;
+	import org.zkoss.zk.ui.WebApps;
+	import org.zkoss.zk.ui.event.Event;
+	import org.zkoss.zk.ui.event.EventListener;
+	import org.zkoss.zss.app.Consts;
+	import org.zkoss.zss.app.file.FileHelper;
+	import org.zkoss.zss.app.zul.ctrl.DesktopWorkbenchContext;
+	import org.zkoss.zss.app.zul.ctrl.WorkbookCtrl;
+	import org.zkoss.zss.app.zul.ctrl.WorkspaceContext;
+	import org.zkoss.zul.Filedownload;
+	import org.zkoss.zul.Menu;
+	import org.zkoss.zul.Menuitem;
+	import org.zkoss.zul.Menupopup;
+	import org.zkoss.zul.Messagebox;
+	import javax.servlet.http.HttpServletRequest;
+	import org.zkoss.zk.ui.Executions;
+	import tutorial.MyProperties;
+    public void getData(){
+	
+		MyProperties prop=new MyProperties();
+		Class.forName(prop.driver);
+		Connection conn = DriverManager.getConnection(prop.url,prop.username,prop.password);
+		ResultSet rst = null;
+		ResultSet userRS = null;
+		Statement sql_statement = null;
+		Statement statement = null;
+		Statement userStatement = null;
+		File empty_file=new File(prop.empty_file);
+		
+		String sessionUser = "select username from ad_session";
+		userStatement = conn.createStatement();
+		
+		userRS = userStatement.executeQuery(sessionUser);
+		while(userRS.next()){
+	       System.out.println("USERNAME :"+userRS.getString(1));
+		}
+		String getprojectid="select c_project_id,em_dtzk_filename from c_project where em_dtzk_associatecostbudget='Y'";
+		sql_statement=conn.createStatement();
+		rst=sql_statement.executeQuery(getprojectid);
+		rst.next();
+		
+		String activeprjID=rst.getString(1);
+		String activefilename=rst.getString(2);
+		Executions.getCurrent().setAttribute("activefilename",activefilename);
+		File output_file = new File(prop.out_file+activefilename);
+		System.out.println("output_file path :"+output_file);
+		String jdbc_insert_sql = "select *  from dtzk_ssinformation where dtzk_ssinformation_id='"+activeprjID+ "' order by rowid,columnid ";
+		System.out.println("Insert SQL : :: :" + jdbc_insert_sql);
+		ResultSet no_of_rows=null;
+		String excelCountQuery = "Select max(rowid) from dtzk_ssinformation where dtzk_ssinformation_id='"+activeprjID+"'";
+		
+
+		try {
+			Class.forName(prop.driver);
+			conn = DriverManager.getConnection(prop.url,prop.username,prop.password);
+			statement = conn.createStatement();
+			rst = statement.executeQuery(jdbc_insert_sql);
+			
+			if(rst.next()==false){		
+				Messagebox.show("No Project is Associated");
+				System.out.println("In the IF...");
+				System.out.println("EMPTY FILE"+empty_file);
+				System.out.println("Your excel file has been generated...!");
+				Executions.sendRedirect("/empty_template.zul");
+			}
+			else{
+			    
+				exportToExcel(rst, output_file);				
+				Executions.sendRedirect("/dbconnect.zul?filename="+output_file);
+			}
+
+		} catch (Exception e) {
+
+			e.printStackTrace();
+		}
+		finally{
+			
+			rst.close();
+			sql_statement.close();
+			statement.close();
+			conn.close();
+		}
+		
+		
+	}
+ public static void exportToExcel(ResultSet rs, File outputFile)
+                       throws Exception {
+               int prev = 0, curr = 0;
+               FileInputStream myInput = new FileInputStream(outputFile);
+               XSSFWorkbook hwb = new XSSFWorkbook(myInput);
+               XSSFSheet sheet =hwb.getSheetAt(0);
+                
+               XSSFCell cell = null;
+             
+               while (rs.next()) {
+              
+              cell=sheet.getRow(rs.getInt(2)).getCell(rs.getInt(3));
+              System.out.println(" cell information" +cell);
+                                               
+                                                 switch (cell.getCellType()) {
+                                       
+                                               case org.zkoss.poi.ss.usermodel.Cell.CELL_TYPE_STRING:
+                                               System.out.println("cell type string and cell no :!"+sheet.getRow(rs.getInt(2)).getCell(rs.getInt(3)));
+                                                       cell.setCellValue(rs.getString(4));
+                                               System.out.println("after String data assigned");        
+                                                       break;
+                                               case org.apache.poi.ss.usermodel.Cell.CELL_TYPE_NUMERIC:
+													System.out.println("cell type numeric and Cell no :!"+sheet.getRow(rs.getInt(2)).getCell(rs.getInt(3)));
+												
+                                                       cell.setCellValue(rs.getInt(4));
+												System.out.println("after numeric  data assigned!");
+                                                       break;
+                                               case org.apache.poi.ss.usermodel.Cell.CELL_TYPE_BLANK:
+                                               System.out.println("blank case executed and Cell no :!"+sheet.getRow(rs.getInt(2)).getCell(rs.getInt(3)));
+                                               if(rs.getString(4)!=null){
+                                                  System.out.println("blank cell data string");
+                                                  cell.setCellValue(rs.getString(4));
+                                                  }
+ 											   else{
+ 											      System.out.println("blank cell data Int");
+ 											      cell.setCellValue(rs.getInt(4));	
+ 											      }                                            
+                                               default:
+                                               System.out.println("default!");
+                                               System.out.println();
+                                               }
+                                             
+                                       
+               }
+               try {
+                       FileOutputStream fileOut = new FileOutputStream(outputFile);
+                       hwb.write(fileOut);
+                       fileOut.close();
+                       System.out.println("Your excel file has been generated!");
+               } catch (Exception ex) {
+                       System.out.println(ex);
+
+               }
+               
+
+       }
+       		
+	}
+</zscript>
+	</window>
+</zk>
+

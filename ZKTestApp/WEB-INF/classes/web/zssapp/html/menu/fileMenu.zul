@@ -1,0 +1,27 @@
+<?page title="new page title" contentType="text/html;" language="xul/html" zscriptLanguage="Java" contentType="text/html"?>
+<?init class="org.zkoss.zkplus.databind.AnnotateDataBinderInit"?>
+<zk>
+
+	<menupopup id="fileMenupopup">
+		<!--<menuitem id="newFile" label="${c:l('file.new')}" />-->
+		<!--<menuitem id="openFile" label="${c:l('file.open')}" />-->
+		<menuitem id="saveFile" label="${c:l('file.save')}" />
+		<!--<menuitem id="saveFileAs" label="${c:l('file.saveas')}" -->
+		<!-- disabled="true" /> -->
+		<menuitem id="saveFileAndClose" label="${c:l('file.saveClose')}"
+			disabled="true" />
+		<menuseparator />
+		<menuitem id="exportExcel" label="${c:l('file.export')}"
+			disabled="false" />
+		
+		<menuitem id="importFile" label="${c:l('file.import')}"
+			disabled="true" />
+
+		<menuitem id="saveDb" label="submit"/>
+		<menuitem id="selectedProjectData" label="Project Information"/>
+		<!--<menuitem id="refresh" label="Refresh" href="selectedproject.zul"></menuitem>
+		
+	--></menupopup>
+		
+		
+</zk>
